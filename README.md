@@ -18,6 +18,8 @@ actions. Choose a local model to keep inference on your machine, or opt into a c
 
 **Status:** `0.1.0-rc.1` · Desktop browsers · English and Persian reading workflows
 
+![Nota preview showing the PDF reader, Rive mascot, and AI explanation panel](docs/images/nota-preview.jpg)
+
 ## Key features
 
 - 📄 **PDF reader & virtualized viewport.** PDF.js through React-PDF powers continuous multi-page scrolling, page
