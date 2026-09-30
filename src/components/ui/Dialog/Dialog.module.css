@@ -1,0 +1,31 @@
+.dialog {
+	width: min(440px, calc(100vw - 32px));
+	max-height: calc(100dvh - 32px);
+	margin: auto;
+	padding: 24px;
+	overflow: auto;
+	overscroll-behavior: contain;
+	border: 1px solid var(--ui-border-strong);
+	border-radius: var(--ui-radius-lg);
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	box-shadow: var(--ui-shadow-pop);
+}
+.dialog:not([open]) {
+	display: none;
+}
+.dialog::backdrop {
+	background: #10181080;
+	backdrop-filter: blur(3px);
+}
+.dialog h2 {
+	margin: 0 0 12px;
+	font-size: 17px;
+	line-height: 1.4;
+	color: var(--ui-text-strong);
+}
+.dialog p {
+	font-size: 13px;
+	line-height: 1.75;
+	overflow-wrap: anywhere;
+}

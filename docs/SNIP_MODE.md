@@ -5,10 +5,11 @@
 **Snip mode** is an explicit toolbar toggle. While active, PDF text selection and links are covered by a
 pointer-capturing overlay. Drag in either direction on one rendered page; coordinates clamp to that page. Crops smaller
 than 8 CSS pixels in either dimension are rejected. A bounding box and floating **Explain snip / Cancel** toolbar
-appear, with an optional question. Drawing, editing the question and cancelling make no network requests.
+appear, with an optional question. The controls float outside the clipped PDF page and are clamped to the visible
+reading area, including fullscreen; crop-preparation errors appear beside those controls. Drawing, editing the question and cancelling make no network requests.
 
 Escape exits snip mode. For keyboard access, focus a page's snip region and press Enter to select its central area, then
-Tab to the question/actions. Only one page's crop is active at a time. Zoom resets an unfinished box. Leaving the
+use keyboard navigation to reach the question/actions. Only one page's crop is active at a time. Zoom resets an unfinished box. Leaving the
 virtual page, cancelling, switching documents or unmounting cancels crop preparation.
 
 ## Geometry, rendering and limits

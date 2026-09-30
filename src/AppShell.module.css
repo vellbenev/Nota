@@ -1,58 +1,142 @@
-/* AppShell — full-height split pane: 69% PDF viewport / 31% assistant, one divider. */
+/* AppShell — tactile split with soft divider and spring motion */
 .shell {
 	height: 100dvh;
 	min-height: 0;
 	overflow: hidden;
+	background: var(--ui-surface);
 }
 .split {
 	height: 100dvh;
 	min-height: 0;
 	overflow: hidden;
 	display: grid;
-	grid-template-columns: minmax(0, var(--pdf-share, 69%)) 6px minmax(0, 1fr);
+	grid-template-columns: minmax(0, var(--pdf-share, 69fr)) 8px minmax(0, var(--assistant-share, 31fr));
+	transition:
+		grid-template-columns 360ms var(--ui-ease-out),
+		grid-template-rows 360ms var(--ui-ease-out);
 }
 .divider {
-	min-width: 6px;
+	min-width: 8px;
 	touch-action: none;
 	cursor: col-resize;
 	background: transparent;
 	border: 0;
 	padding: 0;
 	position: relative;
+	display: grid;
+	place-items: center;
+}
+.divider::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: var(--ui-surface);
+	border-inline: 1px solid var(--ui-border-soft);
 }
 .divider::after {
 	content: '';
-	position: absolute;
-	inset: 0 2px;
-	border-radius: 3px;
-	background: transparent;
-	transition: background var(--ui-duration) var(--ui-ease);
+	width: 3px;
+	height: 28px;
+	border-radius: 999px;
+	background: var(--ui-border);
+	opacity: 0.9;
+	transition:
+		background var(--ui-duration) var(--ui-ease),
+		height var(--ui-duration) var(--ui-ease),
+		width var(--ui-duration) var(--ui-ease),
+		box-shadow var(--ui-duration) var(--ui-ease),
+		opacity var(--ui-duration) var(--ui-ease);
 }
-.divider:hover::after,
-.divider:focus-visible::after,
-.divider.active::after {
-	background: var(--ui-border-strong);
+.divider:hover::after {
+	background: var(--ui-accent);
+	height: 36px;
+	box-shadow: 0 0 0 4px var(--ui-ring-soft);
+	opacity: 1;
 }
 .divider:focus-visible {
-	outline: 2px solid var(--ui-ring);
-	outline-offset: -2px;
+	outline: none;
 }
-@media (max-width: 1100px) {
-	.split {
-		grid-template-columns: minmax(0, 1fr) 6px 310px;
-	}
-	.divider {
-		pointer-events: none;
-		visibility: hidden;
-	}
+.divider:focus-visible::after {
+	background: var(--ui-accent);
+	height: 36px;
+	box-shadow: 0 0 0 4px var(--ui-ring-soft);
+}
+.divider.active::after {
+	background: var(--ui-accent);
+	width: 4px;
+	height: 44px;
+	box-shadow: 0 0 0 6px var(--ui-ring-soft);
+}
+.assistantSlot {
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	background: var(--ui-surface);
+	transition:
+		opacity 220ms var(--ui-ease-out),
+		transform 360ms var(--ui-ease-out),
+		filter 220ms var(--ui-ease-out);
+}
+.focused {
+	grid-template-columns: minmax(0, 1fr) 0px minmax(0, 0fr);
+}
+.focused .assistantSlot {
+	opacity: 0;
+	transform: translateX(12px) scale(0.98);
+	pointer-events: none;
+	filter: blur(2px);
+}
+.focused .divider {
+	visibility: hidden;
+	pointer-events: none;
+}
+.resizing {
+	transition: none;
+	user-select: none;
+}
+.resizing .divider::after {
+	transition: none;
 }
 @media (max-width: 760px) {
 	.split {
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: minmax(0, 62fr) minmax(0, 38fr);
+		grid-template-rows: minmax(0, var(--pdf-share, 69fr)) 8px minmax(0, var(--assistant-share, 31fr));
 	}
 	.divider {
-		display: none;
+		min-height: 8px;
+		cursor: row-resize;
+	}
+	.divider::before {
+		border-inline: 0;
+		border-block: 1px solid var(--ui-border-soft);
+	}
+	.divider::after {
+		width: 28px;
+		height: 3px;
+	}
+	.divider:hover::after {
+		width: 36px;
+		height: 3px;
+	}
+	.divider.active::after {
+		width: 44px;
+		height: 4px;
+	}
+	.focused {
+		grid-template-rows: minmax(0, 1fr) 0px minmax(0, 0fr);
+	}
+	.focused .assistantSlot {
+		transform: translateY(12px) scale(0.98);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.split,
+	.assistantSlot,
+	.divider::after {
+		transition: none;
 	}
 }
 
+.assistantSlot {
+	container-type: inline-size;
+}

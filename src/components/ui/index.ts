@@ -5,3 +5,6 @@ export * from './ScrollArea';
 export * from './SegmentedControl';
 export * from './Tooltip';
 
+export * from './Dialog/Dialog';
+export * from './Field/Field';
+export * from './Popover/Popover';

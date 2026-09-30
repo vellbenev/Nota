@@ -41,8 +41,17 @@ export default memo(function ResponseMarkdown({ text, language = 'fa' }: { text:
 							<bdi>{children}</bdi>
 						</code>
 					),
-					blockquote: ({ children }) => <blockquote dir='auto'>{children}</blockquote>,
-					pre: ({ children }) => <pre dir='ltr'>{children}</pre>,
+					blockquote: ({ children, dir }) => <blockquote dir={dir ?? 'auto'}>{children}</blockquote>,
+					pre: ({ children }) => (
+						<pre dir='ltr' tabIndex={0} aria-label='Code block'>
+							{children}
+						</pre>
+					),
+					table: ({ children, dir }) => (
+						<table dir={dir} tabIndex={0} aria-label='Response table'>
+							{children}
+						</table>
+					),
 				}}
 			>
 				{normalizeMathDelimiters(text)}
@@ -50,4 +59,3 @@ export default memo(function ResponseMarkdown({ text, language = 'fa' }: { text:
 		</div>
 	);
 });
-

@@ -1,61 +1,69 @@
-import { useEffect, useRef, useState } from 'react';
-import { Button, Dropdown } from '../../components/ui';
+import { useRef, useState } from 'react';
+import { Button, Dialog, Dropdown, Popover } from '../../components/ui';
 import type { DocumentSummary } from '../../domain/document';
+import TransferControls, { type TransferActions } from '../library/TransferControls';
+import ThemeControl from '../workspace/ThemeControl';
 import styles from './DataControls.module.css';
 export default function DataControls({
 	documents,
-	busy,
+	busy: deleting,
 	onDelete,
+	transfer,
+	activeDocId,
 }: {
 	documents: DocumentSummary[];
 	busy: boolean;
 	onDelete: (docId?: string) => Promise<boolean>;
+	transfer?: TransferActions;
+	activeDocId?: string;
 }) {
+	const [transferring, setTransferring] = useState(false);
+	const busy = deleting || transferring;
 	const [target, setTarget] = useState(''),
 		[confirm, setConfirm] = useState<string | null>(null);
-	const dialog = useRef<HTMLDialogElement>(null),
-		cancel = useRef<HTMLButtonElement>(null);
-	useEffect(() => {
-		if (confirm !== null) {
-			dialog.current?.showModal();
-			cancel.current?.focus();
-		} else if (dialog.current?.open) dialog.current.close();
-	}, [confirm]);
+	const cancel = useRef<HTMLButtonElement>(null);
 	const name = documents.find(d => d.docId === confirm)?.name;
 	return (
-		<details className={`data-controls ${styles.root}`}>
-			<summary className={styles.trigger} aria-label='Data & privacy'>
-				Settings
-			</summary>
-			<div className={`data-menu ${styles.menu}`}>
-				<p>Stored only in this browser. Deletion cannot be undone; your original files are unaffected.</p>
-				<div className='data-dropdown'>
-					<span className={`field-label ${styles.menuLabel}`}>Document to delete</span>
-					<Dropdown
-						label='Document to delete'
-						value={target}
-						onChange={setTarget}
-						disabled={busy}
-						searchable
-						placeholder='Choose a document…'
-						options={documents.map(doc => ({ value: doc.docId, label: doc.name, icon: '▤' }))}
-					/>
+		<>
+			<Popover label='Data & privacy'>
+				<div className={`data-menu ${styles.content}`}>
+					<ThemeControl />
+					{transfer && (
+						<TransferControls
+							documents={documents}
+							activeDocId={activeDocId}
+							disabled={deleting}
+							actions={transfer}
+							onBusyChange={setTransferring}
+						/>
+					)}
+					<p>Stored only in this browser. Deletion cannot be undone; your original files are unaffected.</p>
+					<div className='data-dropdown'>
+						<span className={`field-label ${styles.menuLabel}`}>Document to delete</span>
+						<Dropdown
+							label='Document to delete'
+							value={target}
+							onChange={setTarget}
+							disabled={busy}
+							searchable
+							placeholder='Choose a document…'
+							options={documents.map(doc => ({ value: doc.docId, label: doc.name, icon: '▤' }))}
+						/>
+					</div>
+					<Button size='sm' disabled={!target || busy} onClick={() => setConfirm(target)}>
+						Delete document data
+					</Button>
+					<Button variant='danger' size='sm' disabled={busy} onClick={() => setConfirm('')}>
+						Reset all Nota data
+					</Button>
 				</div>
-				<Button size='sm' disabled={!target || busy} onClick={() => setConfirm(target)}>
-					Delete document data
-				</Button>
-				<Button variant='danger' size='sm' disabled={busy} onClick={() => setConfirm('')}>
-					Reset all Nota data
-				</Button>
-			</div>
-			<dialog
-				ref={dialog}
-				className={styles.dialog}
-				aria-labelledby='delete-title'
-				onCancel={e => {
-					if (busy) e.preventDefault();
-					else setConfirm(null);
-				}}
+			</Popover>
+			<Dialog
+				open={confirm !== null}
+				busy={busy}
+				onDismiss={() => setConfirm(null)}
+				initialFocus={cancel}
+				labelledBy='delete-title'
 			>
 				<h2 id='delete-title'>{confirm === '' ? 'Reset all Nota data?' : 'Delete this document?'}</h2>
 				<p>
@@ -80,8 +88,7 @@ export default function DataControls({
 						Confirm deletion
 					</Button>
 				</div>
-			</dialog>
-		</details>
+			</Dialog>
+		</>
 	);
 }
-

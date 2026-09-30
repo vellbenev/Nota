@@ -1,6 +1,8 @@
 import type { PDFPageProxy } from 'pdfjs-dist';
-import { useEffect, useRef, useState } from 'react';
-import { Button, Tooltip } from '../../components/ui';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Button, Input, Tooltip } from '../../components/ui';
+import { useOverlayHost } from '../../components/ui/overlay';
 import { cropFromPoints, renderSnip, type SnipImage, type SnipRect } from '../../infrastructure/pdf/snip';
 import styles from './SnipOverlay.module.css';
 interface Props {
@@ -14,6 +16,9 @@ interface Props {
 }
 export default function SnipOverlay({ page, width, activePage, onActivate, onCancel, getPage, onExplain }: Props) {
 	const root = useRef<HTMLDivElement>(null);
+	const actions = useRef<HTMLDivElement>(null);
+	const host = useOverlayHost();
+	const [position, setPosition] = useState({ left: 8, top: 8, width: 300, maxHeight: 500 });
 	const drag = useRef<{ x: number; y: number; pointerId: number } | null>(null);
 	const controller = useRef<AbortController | null>(null);
 	const [rect, setRect] = useState<SnipRect | null>(null),
@@ -35,6 +40,42 @@ export default function SnipOverlay({ page, width, activePage, onActivate, onCan
 		}
 	}, [activePage, page]);
 	useEffect(() => () => controller.current?.abort(), []);
+	useLayoutEffect(() => {
+		if (!rect || activePage !== page) return;
+		const place = () => {
+			const box = root.current?.getBoundingClientRect();
+			if (!box) return;
+			const visible = root.current?.closest('.pdf-scroll')?.getBoundingClientRect();
+			const leftEdge = Math.max(8, (visible?.left ?? 0) + 8),
+				rightEdge = Math.min(window.innerWidth - 8, (visible?.right ?? window.innerWidth) - 8);
+			const topEdge = Math.max(8, (visible?.top ?? 0) + 8),
+				bottomEdge = Math.min(window.innerHeight - 8, (visible?.bottom ?? window.innerHeight) - 8);
+			const panelWidth = Math.min(300, Math.max(80, rightEdge - leftEdge));
+			const height = actions.current?.getBoundingClientRect().height ?? 116;
+			const top = box.top + rect[1] * box.height,
+				bottom = top + rect[3] * box.height;
+			setPosition({
+				width: panelWidth,
+				maxHeight: Math.max(64, bottomEdge - topEdge),
+				left: Math.max(leftEdge, Math.min(box.left + rect[0] * box.width, rightEdge - panelWidth)),
+				top: Math.max(
+					topEdge,
+					Math.min(top - height - 8 >= topEdge ? top - height - 8 : bottom + 8, bottomEdge - height),
+				),
+			});
+		};
+		place();
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+		if (root.current) observer?.observe(root.current);
+		if (actions.current) observer?.observe(actions.current);
+		window.addEventListener('resize', place);
+		window.addEventListener('scroll', place, true);
+		return () => {
+			observer?.disconnect();
+			window.removeEventListener('resize', place);
+			window.removeEventListener('scroll', place, true);
+		};
+	}, [rect, activePage, page, host]);
 	async function explain() {
 		if (!rect || busy || !root.current) return;
 		const abort = new AbortController();
@@ -123,42 +164,52 @@ export default function SnipOverlay({ page, width, activePage, onActivate, onCan
 							height: `${rect[3] * 100}%`,
 						}}
 					/>
-					<div
-						className={`snip-actions ${styles.actions}`}
-						role='toolbar'
-						aria-label='Snip actions'
-						style={{ top: `${Math.max(0, rect[1] * 100)}%`, left: `${Math.min(rect[0] * 100, 45)}%` }}
-						onPointerDown={event => event.stopPropagation()}
-					>
-						<input
-							aria-label='Snip question (optional)'
-							value={question}
-							onChange={event => setQuestion(event.target.value)}
-							placeholder='Question (optional)'
-							maxLength={2000}
-							dir='auto'
-						/>
-						<div className={styles.actionRow}>
-							<Tooltip content='Explain this image crop'>
-								<Button variant='primary' size='sm' loading={busy} onClick={() => void explain()}>
-									{busy ? 'Preparing crop…' : 'Explain snip'}
+					{createPortal(
+						<div
+							ref={actions}
+							className={`snip-actions ${styles.actions}`}
+							role='toolbar'
+							aria-label='Snip actions'
+							style={position}
+							data-ui-overlay
+							onPointerDown={event => event.stopPropagation()}
+						>
+							<Input
+								aria-label='Snip question (optional)'
+								value={question}
+								onChange={event => setQuestion(event.target.value)}
+								placeholder='Question (optional)'
+								maxLength={2000}
+								dir='auto'
+							/>
+							{error && (
+								<p role='alert' className={styles.actionError}>
+									{error}
+								</p>
+							)}
+							<div className={styles.actionRow}>
+								<Tooltip content='Explain this image crop'>
+									<Button variant='primary' size='sm' loading={busy} onClick={() => void explain()}>
+										{busy ? 'Preparing crop…' : 'Explain snip'}
+									</Button>
+								</Tooltip>
+								<Button
+									variant='ghost'
+									size='sm'
+									onClick={() => {
+										controller.current?.abort();
+										onCancel();
+									}}
+								>
+									Cancel
 								</Button>
-							</Tooltip>
-							<Button
-								variant='ghost'
-								size='sm'
-								onClick={() => {
-									controller.current?.abort();
-									onCancel();
-								}}
-							>
-								Cancel
-							</Button>
-						</div>
-					</div>
+							</div>
+						</div>,
+						host,
+					)}
 				</>
 			)}
-			{error && (
+			{error && !rect && (
 				<p className={`snip-error ${styles.inlineError}`} role='alert'>
 					{error}
 				</p>
@@ -166,4 +217,3 @@ export default function SnipOverlay({ page, width, activePage, onActivate, onCan
 		</div>
 	);
 }
-

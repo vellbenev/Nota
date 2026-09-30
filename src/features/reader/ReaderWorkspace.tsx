@@ -1,7 +1,8 @@
-import { Suspense, useRef, useState, type RefObject } from 'react';
+import { Suspense, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Button, Dropdown } from '../../components/ui';
 import type { DocumentRepository } from '../../infrastructure/db/documents.ts';
 import type { SelectedSnip } from '../../infrastructure/pdf/snip';
+import { libraryTransfer } from '../library/transfer';
 import { useDocumentLibrary } from '../library/useDocumentLibrary.ts';
 import DataControls from '../settings/DataControls';
 import PdfReaderBoundary from './PdfReaderBoundary.tsx';
@@ -14,10 +15,11 @@ interface Props {
 	onDocumentChange: () => void;
 	onSelection: (selection: TextSelection | null) => void;
 	onSelectionError: (message: string) => void;
-	onAssistantAction?: (selection: TextSelection, action: 'translate' | 'ask') => void;
+	onAssistantAction?: (selection: TextSelection, action: 'translate' | 'explain' | 'ask') => void;
 	onSnip?: (snip: SelectedSnip) => void;
 	onDataDeleted?: (docId?: string) => void;
 	repository?: DocumentRepository;
+	workspaceControls?: ReactNode;
 }
 
 export default function ReaderWorkspace({
@@ -29,6 +31,7 @@ export default function ReaderWorkspace({
 	onSnip,
 	onDataDeleted,
 	repository,
+	workspaceControls,
 }: Props) {
 	const reader = useDocumentLibrary(onDocumentChange, repository);
 	const [dragging, setDragging] = useState(false);
@@ -82,6 +85,7 @@ export default function ReaderWorkspace({
 				ref={inputRef}
 				className='visually-hidden'
 				type='file'
+				tabIndex={-1}
 				aria-label='Import PDF'
 				accept='application/pdf,.pdf'
 				onChange={event => {
@@ -91,7 +95,13 @@ export default function ReaderWorkspace({
 				}}
 			/>
 			<header className={`reader-topbar ${styles.topbar}`}>
-				<img className={`reader-brand ${styles.brand}`} src='/brand/logo.svg' alt='Nota' width={28} height={28} />
+				<img
+					className={`reader-brand ${styles.brand}`}
+					src='/brand/logo.svg'
+					alt='Nota'
+					width={28}
+					height={28}
+				/>
 				<h1 className={`document-title ${styles.title}`} title={active?.document.name}>
 					<bdi>{active?.document.name || 'Nota'}</bdi>
 				</h1>
@@ -117,6 +127,7 @@ export default function ReaderWorkspace({
 				<div className={`reader-controls-host ${styles.controlsHost}`} ref={setControlsHost} />
 				<Button
 					className={`reader-open ${styles.openButton}`}
+					variant='primary'
 					size='sm'
 					onClick={() => inputRef.current?.click()}
 				>
@@ -125,8 +136,22 @@ export default function ReaderWorkspace({
 				{active && !active.persistent && (
 					<span className={`session-badge ${styles.sessionBadge}`}>Session only</span>
 				)}
+				<div className={styles.workspaceControls}>{workspaceControls}</div>
 				<DataControls
 					documents={reader.library}
+					activeDocId={active?.persistent ? active.document.docId : undefined}
+					transfer={{
+						markdown: libraryTransfer.markdown,
+						backup: async () => {
+							await reader.flushPendingView();
+							return libraryTransfer.backup();
+						},
+						restore: async value => {
+							const added = await libraryTransfer.restore(value);
+							await reader.refreshLibrary();
+							return added;
+						},
+					}}
 					busy={reader.deleting}
 					onDelete={async docId => {
 						onDataDeleted?.(docId);

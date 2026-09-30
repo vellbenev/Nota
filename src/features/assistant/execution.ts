@@ -66,7 +66,7 @@ export class TutorExecution {
 		const active: Active = { ...identity, controller, signature, buffer };
 		this.active = active;
 		const valid = () => this.active === active && !controller.signal.aborted;
-		this.emit({ type: 'queue', ...identity, input, prompt });
+		this.emit({ type: 'queue', ...identity, input, prompt, replace: regenerate });
 		active.promise = (async () => {
 			let warning = '';
 			try {
@@ -147,4 +147,3 @@ export class TutorExecution {
 		return active.promise;
 	}
 }
-

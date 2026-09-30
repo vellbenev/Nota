@@ -1,7 +1,9 @@
 // Open /tests/runtime/mascot.html with Vite running. Uses the real Rive asset,
 // assistant execution/reducer and display buffer with a deterministic local stream.
+import '@fontsource-variable/vazirmatn/wght.css';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import '../../src/components/ui/tokens.css';
 import { TutorExecution } from '../../src/features/assistant/execution';
 import { assistantReducer, initialAssistant } from '../../src/features/assistant/machine';
 import MascotView from '../../src/features/mascot/MascotView';
@@ -71,4 +73,3 @@ function Harness() {
 	);
 }
 createRoot(document.getElementById('root')!).render(<Harness />);
-

@@ -1,0 +1,30 @@
+.root {
+	height: 100dvh;
+	padding: 20px;
+	overflow: auto;
+}
+.root h1 {
+	font-size: 20px;
+}
+.root > p {
+	line-height: 1.6;
+	color: var(--ui-muted);
+}
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	align-items: end;
+	margin-bottom: 20px;
+}
+.controls > * {
+	width: 180px;
+}
+.slot {
+	max-width: 100%;
+	height: 640px;
+	container-type: inline-size;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-md);
+	overflow: hidden;
+}

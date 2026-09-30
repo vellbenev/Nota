@@ -1,4 +1,4 @@
-/* AssistantPanel — companion sidebar with bidi-safe reading column. */
+/* AssistantPanel — warm paper companion with generous breathing room */
 .pane {
 	height: 100%;
 	min-height: 0;
@@ -12,41 +12,59 @@
 .heading {
 	flex: none;
 	height: auto;
-	min-height: 108px;
+	min-height: 112px;
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
 	gap: 10px;
-	padding: 6px 14px;
+	padding: 10px 16px;
 	background: var(--ui-surface-raised);
 	border-bottom: 1px solid var(--ui-border-soft);
+	position: relative;
+}
+/* Subtle hairline glow under header */
+.heading::after {
+	content: '';
+	position: absolute;
+	inset-inline: 0;
+	bottom: -1px;
+	height: 12px;
+	background: linear-gradient(to bottom, #1a2a1a06, transparent);
+	pointer-events: none;
+}
+:root[data-theme='dark'] .heading::after {
+	background: linear-gradient(to bottom, #0004, transparent);
 }
 .title {
 	margin: 0;
 	font-family: var(--font-display);
 	font-size: 13.5px;
-	font-weight: 700;
-	letter-spacing: -0.01em;
+	font-weight: 750;
+	letter-spacing: -0.02em;
 	color: var(--ui-text-strong);
 	white-space: nowrap;
 }
 .modelTag {
 	margin-inline-start: auto;
 	flex: none;
-	padding: 3px 8px;
+	padding: 4px 10px;
 	border-radius: var(--ui-radius-pill);
 	background: var(--ui-surface-sunken);
 	color: var(--ui-muted);
 	font-size: 10.5px;
-	font-weight: 650;
+	font-weight: 700;
+	letter-spacing: 0.02em;
 	max-width: 170px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	border: 1px solid var(--ui-border-soft);
+	transition: background var(--ui-duration) var(--ui-ease);
 }
 .modelTag.cloud {
 	background: var(--ui-accent-soft);
 	color: var(--ui-accent);
+	border-color: color-mix(in srgb, var(--ui-accent) 14%, transparent);
 }
 :root[data-theme='dark'] .modelTag.cloud {
 	color: var(--ui-accent);
@@ -54,12 +72,14 @@
 .content {
 	flex: 1;
 	min-height: 0;
-	padding: 14px;
+	padding: 16px;
+	background:
+		radial-gradient(ellipse 600px 300px at 50% 0%, var(--ui-surface-raised) 0%, transparent 62%), var(--ui-surface);
 }
 .stack {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 16px;
 	min-width: 0;
 }
 .card {
@@ -67,7 +87,15 @@
 	border: 1px solid var(--ui-border-soft);
 	border-radius: var(--ui-radius-md);
 	box-shadow: var(--ui-shadow-xs);
-	padding: 12px;
+	padding: 14px;
+	transition:
+		box-shadow var(--ui-duration) var(--ui-ease),
+		border-color var(--ui-duration) var(--ui-ease),
+		transform var(--ui-duration) var(--ui-ease);
+}
+.card:hover {
+	box-shadow: var(--ui-shadow-sm);
+	border-color: var(--ui-border);
 }
 .cardTitle {
 	display: flex;
@@ -76,25 +104,26 @@
 	gap: 8px;
 	font-size: 11px;
 	font-weight: 700;
-	letter-spacing: 0.06em;
+	letter-spacing: 0.05em;
 	text-transform: uppercase;
-	color: var(--ui-muted);
-	margin-bottom: 8px;
+	color: var(--ui-faint);
+	margin-bottom: 10px;
 }
 .hint {
-	border: 1px dashed var(--ui-border-strong);
-	border-radius: var(--ui-radius-md);
-	padding: 18px 14px;
+	border: 1px dashed var(--ui-border);
+	border-radius: var(--ui-radius-lg);
+	padding: 28px 16px;
 	text-align: center;
 	color: var(--ui-muted);
 	font-size: 12.5px;
-	background: transparent;
+	background: var(--ui-surface-raised);
+	box-shadow: var(--ui-shadow-soft);
 }
 .quote {
-	margin: 0 0 10px;
+	margin: 0 0 12px;
 	padding: 10px 12px;
-	border-inline-start: 2px solid var(--ui-accent);
-	border-radius: 0 var(--ui-radius-xs) var(--ui-radius-xs) 0;
+	border-inline-start: 3px solid var(--ui-accent);
+	border-radius: 0 var(--ui-radius-sm) var(--ui-radius-sm) 0;
 	background: var(--ui-surface-sunken);
 	font-size: 12.5px;
 	line-height: 1.75;
@@ -103,7 +132,7 @@
 .sendButton {
 	width: 100%;
 	justify-content: space-between;
-	margin-top: 10px;
+	margin-top: 12px;
 }
 .textButton {
 	align-self: flex-start;
@@ -112,14 +141,15 @@
 .errorText {
 	color: var(--ui-danger);
 	font-size: 12px;
-	line-height: 1.6;
+	line-height: 1.65;
 }
 .fieldLabel {
 	display: block;
 	color: var(--ui-muted);
 	font-size: 11px;
 	font-weight: 700;
-	margin: 10px 0 6px;
+	letter-spacing: 0.02em;
+	margin: 12px 0 6px;
 }
 .textarea,
 .textInput {
@@ -133,16 +163,25 @@
 	font: inherit;
 	font-size: 12.5px;
 	line-height: 1.7;
+	transition:
+		border-color var(--ui-duration) var(--ui-ease),
+		box-shadow var(--ui-duration) var(--ui-ease),
+		background var(--ui-duration) var(--ui-ease);
 }
 .textarea {
-	min-height: 84px;
+	min-height: 88px;
 	resize: vertical;
 }
 .textarea:focus-visible,
 .textInput:focus-visible {
-	outline: 2px solid var(--ui-ring);
-	outline-offset: 1px;
+	outline: none;
 	border-color: var(--ui-ring);
+	box-shadow: 0 0 0 3px var(--ui-ring-soft);
+	background: var(--ui-surface-raised);
+}
+.textarea::placeholder,
+.textInput::placeholder {
+	color: var(--ui-faint);
 }
 .modelRow {
 	display: flex;
@@ -320,3 +359,96 @@
 	text-align: start;
 }
 
+.turn {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.snipPreview {
+	display: block;
+	max-width: 100%;
+	max-height: 180px;
+	object-fit: contain;
+	margin: 8px 0;
+	border-radius: var(--ui-radius-xs);
+}
+.followUp {
+	margin-top: 18px;
+	padding-top: 14px;
+	border-top: 1px solid var(--ui-border-soft);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.fieldLabel {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--ui-muted);
+}
+.suggestions {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+.suggestions button {
+	white-space: normal;
+	text-align: start;
+}
+.textarea {
+	margin-top: 0;
+}
+
+.actionPicker button {
+	flex: 1 1 auto;
+	padding-inline: 4px;
+	font-size: 11px;
+}
+
+.suggestions button {
+	line-height: 1.5;
+	padding-block: 6px;
+	height: auto;
+	max-width: 100%;
+}
+@container (max-width: 440px) {
+	.heading {
+		min-height: 90px;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 4px 8px;
+		padding: 10px 12px;
+	}
+	.heading > :first-child {
+		grid-column: 1;
+		grid-row: 1;
+		min-width: 0;
+	}
+	.heading > button {
+		grid-column: 2;
+		grid-row: 1;
+		justify-self: end;
+	}
+	.modelTag {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		justify-self: start;
+		margin: 0 0 0 64px;
+		max-width: 170px;
+		font-size: 9.5px;
+		padding-inline: 6px;
+	}
+	.content {
+		padding: 12px;
+	}
+	.card {
+		padding: 12px;
+	}
+}
+
+@container (max-width: 340px) {
+	.actionPicker button {
+		padding-inline: 2px;
+		font-size: 10.5px;
+	}
+}

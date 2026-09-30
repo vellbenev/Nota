@@ -287,6 +287,8 @@ export function useDocumentLibrary(onBeforeOpen: () => void, repository: Documen
 	}
 
 	return {
+		refreshLibrary: refresh,
+		flushPendingView: flushView,
 		deleteData,
 		deleting,
 		active,
@@ -304,4 +306,3 @@ export function useDocumentLibrary(onBeforeOpen: () => void, repository: Documen
 		retryStorage,
 	};
 }
-

@@ -32,3 +32,11 @@ Browser verification covered both question and translation sequences: `idle → 
 complete projects back to idle, and a separate request failure. Reduced-motion mount/unmount and resumption are covered
 by `tests/rive-mascot.test.tsx`.
 
+## UI regression fixture
+
+Open `/tests/runtime/ui.html` with Vite running to inspect production response cards, shared fields, model actions, Rive
+states, and Markdown containing Persian, English, tables, code, and equations. Use the response-state and panel-width
+controls to cover loading, streaming, error, cancellation, and 240px panels. Theme controls use the fixture origin's
+appearance preference. No model API requests or library writes occur. These fixtures are development entry points and
+are excluded from the release build.
+

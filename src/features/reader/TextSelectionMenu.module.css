@@ -1,35 +1,99 @@
-/* TextSelectionMenu — smooth viewport-clamped floating toolbar. */
+/* TextSelectionMenu — Raycast-style floating command bar */
 .menu {
 	position: fixed;
 	z-index: 130;
 	display: flex;
 	align-items: center;
-	gap: 2px;
-	padding: 4px;
+	gap: 3px;
+	padding: 5px;
+	max-width: calc(100vw - 16px);
+	flex-wrap: wrap;
 	background: var(--ui-surface-raised);
 	border: 1px solid var(--ui-border);
-	border-radius: var(--ui-radius-md);
-	box-shadow: var(--ui-shadow-pop);
-	animation: rise 140ms var(--ui-ease);
+	border-radius: var(--ui-radius-lg);
+	box-shadow:
+		var(--ui-shadow-pop),
+		0 0 0 1px #ffffff0a;
+	animation: rise 180ms var(--ui-ease-out);
+	transform-origin: center bottom;
+}
+.menu[data-placement='below'] {
+	transform-origin: center top;
 }
 @keyframes rise {
 	from {
 		opacity: 0;
-		transform: translateY(5px) scale(0.98);
+		transform: translateY(6px) scale(0.97);
+		filter: blur(2px);
 	}
 	to {
 		opacity: 1;
 		transform: translateY(0) scale(1);
+		filter: blur(0);
 	}
+}
+.colors {
+	display: flex;
+	gap: 5px;
+	padding: 1px 9px 1px 3px;
+	margin-inline-end: 4px;
+	border-inline-end: 1px solid var(--ui-border-soft);
+}
+.swatch {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 2px solid transparent;
+	border-radius: 50%;
+	color: #1a2e26;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 700;
+	display: grid;
+	place-items: center;
+	box-shadow:
+		0 1px 3px #0001,
+		inset 0 1px 0 #ffffff66;
+	transition:
+		transform 140ms var(--ui-ease),
+		box-shadow 140ms var(--ui-ease),
+		border-color 140ms var(--ui-ease),
+		filter 140ms var(--ui-ease);
+}
+.swatch:hover {
+	transform: scale(1.08);
+	filter: brightness(1.03);
+	box-shadow:
+		0 2px 8px #0002,
+		inset 0 1px 0 #ffffff66;
+}
+.swatch:active {
+	transform: scale(0.96);
+}
+.swatch[aria-pressed='true'] {
+	border-color: var(--ui-text-strong);
+	box-shadow:
+		0 0 0 3px var(--ui-ring-soft),
+		0 2px 8px #0002;
+}
+.swatch:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 2px;
+}
+.yellow {
+	background: #f5d547;
+}
+.green {
+	background: #6ee39a;
+}
+.blue {
+	background: #7ab8ff;
 }
 @media (prefers-reduced-motion: reduce) {
 	.menu {
 		animation: none;
 	}
+	.swatch {
+		transition: none;
+	}
 }
-
-.menu {
-	max-width: calc(100vw - 16px);
-	flex-wrap: wrap;
-}
-

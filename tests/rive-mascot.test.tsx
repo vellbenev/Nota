@@ -4,6 +4,7 @@ import MascotView from '../src/features/mascot/MascotView';
 import RiveMascot from '../src/features/mascot/RiveMascot';
 
 const runtime = vi.hoisted(() => ({
+	pending: false,
 	property: { value: 0 },
 	disconnected: { value: 0 },
 	rive: {
@@ -25,11 +26,12 @@ vi.mock('@rive-app/react-canvas', () => ({
 	RuntimeLoader: { setWasmUrl: vi.fn(), setWasmFallbackUrl: vi.fn() },
 	useRive: (options: Record<string, unknown>) => {
 		runtime.options = options;
-		return { rive: runtime.rive, RiveComponent: () => <canvas /> };
+		return { rive: runtime.pending ? null : runtime.rive, RiveComponent: () => <canvas /> };
 	},
 }));
 beforeEach(() => {
 	vi.clearAllMocks();
+	runtime.pending = false;
 	runtime.property.value = 0;
 	// Model the runtime regression: late-started machines don't share this property.
 	runtime.rive.viewModelInstance.number.mockImplementation(name =>
@@ -43,6 +45,7 @@ beforeEach(() => {
 });
 afterEach(() => {
 	cleanup();
+	vi.useRealTimers();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
@@ -73,7 +76,8 @@ test('binds the explicit state machine before synchronizing assistant status cha
 
 test('falls back without marking the mascot ready when the bound property is missing', () => {
 	runtime.rive.viewModelInstance.number.mockReturnValue(null);
-	const onFailure = vi.fn(), onReady = vi.fn();
+	const onFailure = vi.fn(),
+		onReady = vi.fn();
 	render(<RiveMascot src='/mascot/nota.riv' mood='idle' onReady={onReady} onFailure={onFailure} />);
 	expect(onFailure).toHaveBeenCalledOnce();
 	expect(onReady).not.toHaveBeenCalled();
@@ -110,12 +114,30 @@ test('unmounts the runtime when reduced motion is enabled and resumes the curren
 		change();
 	});
 	expect(ui.container.querySelector('canvas')).toBeNull();
-	expect(ui.container.querySelector('svg')).not.toBeNull();
+	expect(ui.container.querySelector('svg')).toBeNull();
+	expect(ui.container.textContent).toContain('Animation paused');
 	ui.rerender(<MascotView status='streaming' />);
 	act(() => {
 		query.matches = false;
 		change();
 	});
 	await waitFor(() => expect(runtime.property.value).toBe(2));
+});
+
+test('a slow runtime stays mounted and becomes ready instead of timing out after five seconds', async () => {
+	vi.useFakeTimers();
+	runtime.pending = true;
+	const onReady = vi.fn(),
+		onFailure = vi.fn();
+	const { act } = await import('@testing-library/react');
+	const ui = render(<RiveMascot src='/mascot/nota.riv' mood='idle' onReady={onReady} onFailure={onFailure} />);
+	act(() => vi.advanceTimersByTime(10_000));
+	expect(onFailure).not.toHaveBeenCalled();
+	expect(onReady).not.toHaveBeenCalled();
+	runtime.pending = false;
+	ui.rerender(<RiveMascot src='/mascot/nota.riv' mood='idle' onReady={onReady} onFailure={onFailure} />);
+	expect(onReady).toHaveBeenCalledOnce();
+	expect(runtime.property.value).toBe(1);
+	vi.useRealTimers();
 });
 

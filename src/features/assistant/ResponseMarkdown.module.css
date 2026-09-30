@@ -1,9 +1,12 @@
-/* ResponseMarkdown — Persian-first reading rhythm, strict LTR islands. */
+/* ResponseMarkdown — airy, book-like reading with strict LTR islands */
 .body {
-	font-size: 13px;
-	line-height: 1.75;
+	font-size: 13.5px;
+	line-height: 1.85;
+	letter-spacing: -0.01em;
 	overflow-wrap: anywhere;
 	min-width: 0;
+	color: var(--ui-text);
+	-webkit-font-smoothing: antialiased;
 }
 .body[dir='rtl'] {
 	text-align: right;
@@ -15,45 +18,84 @@
 }
 .body[dir='rtl'] p,
 .body[dir='rtl'] li {
-	line-height: 1.75;
+	line-height: 1.85;
 }
 .body p {
-	margin: 0 0 10px;
+	margin: 0 0 12px;
 }
 .body p:last-child {
 	margin-bottom: 0;
 }
+.body strong {
+	font-weight: 700;
+	color: var(--ui-text-strong);
+}
+.body em {
+	color: var(--ui-text);
+}
 .body ul,
 .body ol {
-	margin: 0 0 10px;
-	padding-inline-start: 20px;
+	margin: 0 0 14px;
+	padding-inline-start: 22px;
 }
 .body li {
-	margin-bottom: 4px;
+	margin-bottom: 5px;
+}
+.body li::marker {
+	color: var(--ui-faint);
 }
 .body h1,
 .body h2,
 .body h3 {
-	font-size: 13.5px;
-	font-weight: 700;
-	margin: 12px 0 6px;
+	font-size: 14px;
+	font-weight: 750;
+	letter-spacing: -0.02em;
+	margin: 18px 0 8px;
 	color: var(--ui-text-strong);
+	line-height: 1.4;
+}
+.body h1 {
+	font-size: 15px;
+}
+.body h2 {
+	font-size: 14.5px;
+}
+.body hr {
+	border: 0;
+	height: 1px;
+	background: var(--ui-border-soft);
+	margin: 18px 0;
 }
 .body table {
 	width: 100%;
-	border-collapse: collapse;
-	font-size: 12px;
-	margin: 10px 0;
+	border-collapse: separate;
+	border-spacing: 0;
+	font-size: 12.5px;
+	margin: 14px 0;
+	border: 1px solid var(--ui-border-soft);
+	border-radius: var(--ui-radius-sm);
+	overflow: hidden;
 }
 .body th,
 .body td {
-	border: 1px solid var(--ui-border);
-	padding: 6px 8px;
+	border: 0;
+	border-bottom: 1px solid var(--ui-border-soft);
+	padding: 8px 10px;
 	text-align: start;
 }
 .body th {
 	background: var(--ui-surface-sunken);
 	font-weight: 700;
+	color: var(--ui-text-strong);
+	font-size: 11.5px;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+}
+.body tr:last-child td {
+	border-bottom: 0;
+}
+.body tr + tr td {
+	border-top: 1px solid var(--ui-border-soft);
 }
 .body code {
 	direction: ltr;
@@ -61,31 +103,54 @@
 	font-family: var(--font-mono);
 	font-size: 11.5px;
 	background: var(--ui-surface-sunken);
-	border-radius: 5px;
+	border: 1px solid var(--ui-border-soft);
+	border-radius: 6px;
 	padding: 1px 5px;
+	color: var(--ui-text-strong);
 }
 .body pre {
 	direction: ltr;
 	text-align: left;
 	background: var(--ui-surface-sunken);
 	border: 1px solid var(--ui-border-soft);
-	border-radius: var(--ui-radius-sm);
-	padding: 10px 12px;
+	border-radius: var(--ui-radius-md);
+	padding: 14px 16px;
 	overflow: auto;
 	max-width: 100%;
+	box-shadow: var(--ui-shadow-xs);
+	line-height: 1.6;
 }
 .body pre code {
 	background: transparent;
+	border: 0;
 	padding: 0;
+	font-size: 12px;
 }
 .body blockquote {
-	margin: 0 0 10px;
-	padding: 8px 12px;
-	border-inline-start: 2px solid var(--ui-border-strong);
+	margin: 0 0 14px;
+	padding: 10px 14px;
+	border-inline-start: 3px solid var(--ui-accent);
+	border-radius: 0 var(--ui-radius-sm) var(--ui-radius-sm) 0;
+	background: var(--ui-accent-faint);
 	color: var(--ui-muted);
+	font-size: 13px;
 }
 .body a {
 	color: var(--ui-accent);
+	text-decoration: none;
+	border-bottom: 1px solid color-mix(in srgb, var(--ui-accent) 30%, transparent);
+	transition:
+		color var(--ui-duration) var(--ui-ease),
+		border-color var(--ui-duration) var(--ui-ease);
+}
+.body a:hover {
+	color: var(--ui-accent-hover);
+	border-bottom-color: var(--ui-accent);
+}
+.body a:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 2px;
+	border-radius: 2px;
 }
 /* KaTeX output is always an LTR island, even inside RTL prose. */
 .body :global(.katex-display) {
@@ -119,3 +184,13 @@
 	unicode-bidi: isolate;
 }
 
+.body :is(p, h1, h2, h3, h4, h5, h6, li, td, th, blockquote) {
+	text-align: start;
+}
+
+.body th,
+.body td {
+	min-width: 120px;
+	overflow-wrap: normal;
+	word-break: normal;
+}

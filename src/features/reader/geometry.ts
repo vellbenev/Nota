@@ -46,3 +46,9 @@ export function offsetForView(rows: PageRow[], view: ReaderView): number {
 	return row ? row.start + row.pageHeight * normalized.offset : 0;
 }
 
+/** Largest width that keeps the current page and its label/gap inside the viewport. */
+export function fitPageWidth(viewportWidth: number, viewportHeight: number, page: PageDimensions): number {
+	const availableWidth = Math.max(1, viewportWidth - 48);
+	const availableHeight = Math.max(1, viewportHeight - PAGE_LABEL_HEIGHT - PAGE_GAP);
+	return Math.max(1, Math.floor(Math.min(availableWidth, (availableHeight * page.width) / page.height)));
+}

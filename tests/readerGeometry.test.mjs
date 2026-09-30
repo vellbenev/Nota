@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { offsetForView, pageLayout, viewAtOffset } from '../src/features/reader/geometry.ts';
+import { fitPageWidth, offsetForView, pageLayout, viewAtOffset } from '../src/features/reader/geometry.ts';
 
 test('mixed page sizes preserve the page point through zoom and pane resize', () => {
 	const pages = Array.from({ length: 120 }, (_, i) =>
@@ -43,3 +43,10 @@ test('device-pixel rounding at a page boundary does not select the prior page', 
 	assert.equal(restored.offset, 0);
 });
 
+test('fit page respects viewport width, height and portrait/landscape aspect ratios', () => {
+	assert.equal(fitPageWidth(800, 600, { width: 612, height: 792 }), 426);
+	assert.equal(fitPageWidth(800, 1000, { width: 612, height: 792 }), 735);
+	assert.equal(fitPageWidth(800, 600, { width: 792, height: 612 }), 714);
+	assert.equal(fitPageWidth(300, 600, { width: 612, height: 792 }), 252);
+	assert.equal(fitPageWidth(20, 20, { width: 612, height: 792 }), 1);
+});

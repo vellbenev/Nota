@@ -121,7 +121,7 @@ test('clicking Stop aborts fetch and cancels its reader; switching documents dis
 	fireEvent.click(screen.getByRole('button', { name: 'Stop response' }));
 	expect(signal?.aborted).toBe(true);
 	await waitFor(() => expect(readerCancelled).toBe(true));
-	expect(screen.getByText('cancelled')).toBeTruthy();
+	expect(screen.getByText('Stopped')).toBeTruthy();
 	expect(fetchSpy).toHaveBeenCalledTimes(1);
 	fireEvent.click(screen.getByText('Switch document'));
 	expect(screen.queryByLabelText('Tutor response')).toBeNull();
@@ -129,3 +129,19 @@ test('clicking Stop aborts fetch and cancels its reader; switching documents dis
 	expect(await database.responseCache.count()).toBe(0);
 });
 
+test('mixed-language Markdown assigns direction to each prose block before isolating Latin terms', () => {
+	const ui = render(
+		<ResponseMarkdown
+			text={
+				'## A clear heading\n\nAn English paragraph. Another sentence.\n\nیک بند فارسی با اصطلاح Standard deviation.\n\n| Method | Result |\n| --- | --- |\n| Estimate | نتیجه |'
+			}
+		/>,
+	);
+	expect(ui.container.querySelector('h2')?.getAttribute('dir')).toBe('ltr');
+	const paragraphs = ui.container.querySelectorAll('.response-markdown > p');
+	expect(paragraphs[0].getAttribute('dir')).toBe('ltr');
+	expect(paragraphs[1].getAttribute('dir')).toBe('rtl');
+	expect(ui.container.querySelector('table')?.getAttribute('dir')).toBe('ltr');
+	expect(ui.container.querySelectorAll('td')[1].getAttribute('dir')).toBe('rtl');
+	expect(paragraphs[1].querySelector('bdi[dir="ltr"]')?.textContent).toBe('Standard deviation');
+});

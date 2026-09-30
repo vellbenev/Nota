@@ -35,11 +35,6 @@ export default function RiveMascot({
 		onLoadError: () => callbacks.current.onFailure(),
 	});
 	useEffect(() => {
-		if (rive) return;
-		const timeout = setTimeout(() => callbacks.current.onFailure(), 5000);
-		return () => clearTimeout(timeout);
-	}, [rive]);
-	useEffect(() => {
 		// Animation-frame/WASM errors occur outside React's error boundary.
 		const failOnRuntimeError = (event: ErrorEvent) => {
 			if (/rive|wasm-function/i.test(`${event.filename} ${event.error?.stack ?? ''}`))

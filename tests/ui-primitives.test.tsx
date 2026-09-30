@@ -95,7 +95,7 @@ test('button, tooltip, segmented control, and scroll area expose keyboard and lo
 	);
 	expect(screen.getByRole('button', { name: 'Send' }).hasAttribute('disabled')).toBe(true);
 	expect(screen.getByRole('button', { name: 'Copy' }).getAttribute('aria-describedby')).toBe(
-		screen.getByRole('tooltip').id,
+		screen.getByRole('tooltip', { hidden: true }).id,
 	);
 	fireEvent.keyDown(screen.getByRole('button', { name: 'Translate' }), { key: 'ArrowRight' });
 	expect(onChange).toHaveBeenCalledWith('clarify');
@@ -150,4 +150,3 @@ test('segmented Home and End skip disabled boundary options', () => {
 	fireEvent.keyDown(screen.getByRole('button', { name: 'Middle' }), { key: 'End' });
 	expect(onChange).toHaveBeenLastCalledWith('b');
 });
-

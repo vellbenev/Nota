@@ -1,4 +1,4 @@
-/* SegmentedControl — pill slider for zoom / mode switches. */
+/* SegmentedControl — tactile pill slider with floating thumb */
 .root {
 	position: relative;
 	display: inline-flex;
@@ -10,7 +10,12 @@
 	border-radius: var(--ui-radius-pill);
 	background: var(--ui-surface-sunken);
 	direction: inherit;
-	box-shadow: inset 0 1px 2px #1c2a1c0d;
+	box-shadow:
+		inset 0 1px 3px #1a2a1a10,
+		inset 0 0 0 1px #ffffff66;
+}
+:root[data-theme='dark'] .root {
+	box-shadow: inset 0 1px 3px #0006;
 }
 .thumb {
 	position: absolute;
@@ -18,20 +23,29 @@
 	bottom: 3px;
 	border-radius: var(--ui-radius-pill);
 	background: var(--ui-surface-raised);
+	border: 1px solid var(--ui-border-soft);
 	box-shadow:
-		0 1px 4px #20302026,
-		0 0 0 1px #1c2a1c0d;
+		0 1px 3px #1a2a1a18,
+		0 4px 10px #1a2a1a10,
+		0 0 0 1px #ffffffaa;
 	transition:
-		inset-inline-start var(--ui-duration-slow) var(--ui-ease),
-		width var(--ui-duration-slow) var(--ui-ease);
+		inset-inline-start 320ms var(--ui-ease-out),
+		width 320ms var(--ui-ease-out),
+		box-shadow var(--ui-duration) var(--ui-ease);
 	pointer-events: none;
+}
+:root[data-theme='dark'] .thumb {
+	box-shadow:
+		0 1px 4px #0008,
+		0 4px 12px #0006;
+	border-color: var(--ui-border);
 }
 .segment {
 	position: relative;
 	z-index: 1;
 	min-width: 0;
 	flex: 1;
-	padding: 6px 9px;
+	padding: 6px 10px;
 	border: 0;
 	border-radius: var(--ui-radius-pill);
 	background: transparent;
@@ -39,32 +53,44 @@
 	font: inherit;
 	font-size: 12px;
 	font-weight: 600;
-	letter-spacing: 0.01em;
+	letter-spacing: -0.01em;
 	white-space: nowrap;
 	cursor: pointer;
 	transition:
 		color var(--ui-duration) var(--ui-ease),
-		background var(--ui-duration) var(--ui-ease);
+		background var(--ui-duration) var(--ui-ease),
+		transform 120ms var(--ui-ease);
 }
-.segment:hover:not(:disabled) {
+.segment:hover:not(:disabled):not(.selected) {
 	color: var(--ui-text);
+	background: color-mix(in srgb, var(--ui-surface-raised) 62%, transparent);
+}
+.segment:active:not(:disabled) {
+	transform: scale(0.97);
 }
 .segment.selected {
 	color: var(--ui-text-strong);
-	background: transparent;
+	font-weight: 700;
+	background: var(--ui-surface-raised);
 }
 .segment:focus-visible {
 	outline: 2px solid var(--ui-ring);
 	outline-offset: 2px;
+	box-shadow: 0 0 0 4px var(--ui-ring-soft);
 }
 .segment:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
+	transform: none;
 }
 @media (prefers-reduced-motion: reduce) {
 	.segment,
 	.thumb {
 		transition: none;
+		animation: none;
 	}
 }
 
+.root:has(.thumb) .selected {
+	background: transparent;
+}

@@ -1,107 +1,114 @@
-/* MascotView — polished companion avatar integrated in the sidebar header. */
+/* MascotView — transparent wrapper, seamless header integration */
 .view {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 12px;
 	min-width: 0;
 }
 .art {
 	position: relative;
-	width: 96px;
-	height: 96px;
+	width: 88px;
+	height: 88px;
 	flex: none;
 	background: transparent;
 	display: grid;
 	place-items: center;
 	overflow: visible;
-	transition:
-		box-shadow var(--ui-duration) var(--ui-ease),
-		transform var(--ui-duration) var(--ui-ease);
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
 }
-.mascot {
-	width: 80px;
-	height: 80px;
-	overflow: visible;
+.placeholder {
+	display: grid;
+	place-items: center;
+	width: 42px;
+	height: 42px;
+	border-radius: 50%;
+	background: var(--ui-surface-sunken);
+	border: 1px solid var(--ui-border-soft);
 }
-.rive {
+.loader {
+	width: 18px;
+	height: 18px;
+	border: 2px solid var(--ui-border-strong);
+	border-top-color: var(--ui-accent);
+	border-radius: 50%;
+	animation: load 0.9s linear infinite;
+}
+.dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--ui-faint);
+}
+.retry {
 	position: absolute;
-	inset: 0;
+	bottom: 6px;
+	inset-inline-end: 6px;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	display: grid;
+	place-items: center;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	font-size: 14px;
+	line-height: 1;
+	cursor: pointer;
 }
-.bodyArt {
-	transform-origin: 48px 80px;
-	transition: transform 0.25s ease;
+.retry:hover {
+	background: var(--ui-surface-hover);
 }
-.mood-idle .bodyArt {
-	animation: breathe 4s ease-in-out infinite;
+.retry:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 2px;
 }
-.mood-pondering .bodyArt {
-	animation: think 1.6s ease-in-out infinite;
-}
-.mood-pondering .spark {
-	animation: glow 1s ease-in-out infinite;
-}
-.mood-explaining .bodyArt {
-	animation: talk 0.9s ease-in-out infinite;
-}
-.mood-error .bodyArt {
-	transform: rotate(-6deg);
-}
-@keyframes breathe {
-	50% {
-		transform: translateY(-2px);
-	}
-}
-@keyframes think {
-	50% {
-		transform: rotate(6deg);
-	}
-}
-@keyframes talk {
-	50% {
-		transform: translateY(-3px) rotate(-2deg);
-	}
-}
-@keyframes glow {
-	50% {
-		opacity: 0.35;
+@keyframes load {
+	to {
+		transform: rotate(360deg);
 	}
 }
 .meta {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
-	line-height: 1.25;
+	line-height: 1.3;
+	gap: 2px;
 }
 .state {
-	font-size: 11.5px;
+	font-size: 12px;
 	font-weight: 700;
+	letter-spacing: -0.01em;
 	color: var(--ui-text-strong);
 	white-space: nowrap;
 }
 .sub {
-	font-size: 10px;
+	font-size: 11px;
 	color: var(--ui-muted);
 	white-space: nowrap;
 }
-.mood-error .state {
+.error .state {
 	color: var(--ui-danger);
 }
-.reducedMotion .bodyArt,
-.reducedMotion .spark {
-	animation: none !important;
-	transition: none;
-}
-.reducedMotion .art {
-	transition: none;
-}
 @media (prefers-reduced-motion: reduce) {
-	.bodyArt,
-	.spark {
-		animation: none !important;
-		transition: none;
-	}
-	.art {
-		transition: none;
+	.loader {
+		animation: none;
 	}
 }
 
+@container (max-width: 440px) {
+	.view {
+		gap: 8px;
+	}
+	.art {
+		width: 56px;
+		height: 56px;
+	}
+	.state,
+	.sub {
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+}

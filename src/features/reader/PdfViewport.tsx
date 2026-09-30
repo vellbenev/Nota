@@ -7,19 +7,31 @@ import { createPortal } from 'react-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { Button, Dropdown, ScrollArea } from '../../components/ui';
+import { Button, ScrollArea } from '../../components/ui';
 import { normalizeView, type ReaderView } from '../../domain/document.ts';
-import type { Annotation, Highlight } from '../../domain/highlight';
+import type { Annotation, Highlight, HighlightColor } from '../../domain/highlight';
 import { highlights } from '../../infrastructure/db/highlights';
-import type { PageGeometry } from '../../infrastructure/pdf/geometry';
+import { projectRect, type PageGeometry } from '../../infrastructure/pdf/geometry';
 import type { SelectedSnip } from '../../infrastructure/pdf/snip';
 import HighlightOverlay from '../highlights/HighlightOverlay';
-import { DEFAULT_PAGE, offsetForView, pageLayout, viewAtOffset, type PageDimensions } from './geometry.ts';
+import { highlightAtPoint } from '../highlights/hitTest';
+import NotesPanel from '../highlights/NotesPanel';
+import { useHighlightCreation } from '../highlights/useHighlightCreation';
+import { downloadFile, libraryTransfer } from '../library/transfer';
+import {
+	DEFAULT_PAGE,
+	fitPageWidth,
+	offsetForView,
+	pageLayout,
+	viewAtOffset,
+	type PageDimensions,
+} from './geometry.ts';
 import viewport from './PdfViewport.module.css';
 import ReaderToolbar from './ReaderToolbar';
-import { capturePdfSelection, type TextSelection } from './selection.ts';
+import type { TextSelection } from './selection.ts';
 import SnipOverlay from './SnipOverlay';
 import TextSelectionMenu, { type SelectionAction } from './TextSelectionMenu';
+import { usePdfSelection } from './usePdfSelection';
 
 // Vite resolves this asset URL in both dev and production, using the local worker
 // from the same PDF.js package as React-PDF.
@@ -32,7 +44,7 @@ interface Props {
 	onSnip?: (snip: Omit<SelectedSnip, 'docId'>) => void;
 	docId?: string;
 	persistent?: boolean;
-	onAssistantAction?: (selection: TextSelection, action: 'translate' | 'ask') => void;
+	onAssistantAction?: (selection: TextSelection, action: 'translate' | 'explain' | 'ask') => void;
 	blob: Blob;
 	initialView: ReaderView;
 	onViewChange: (view: ReaderView) => void;
@@ -127,8 +139,32 @@ function VirtualPages({
 	const [saved, setSaved] = useState<Highlight[]>([]);
 	const [notes, setNotes] = useState<Annotation[]>([]);
 	const [localError, setLocalError] = useState('');
-	const [selected, setSelected] = useState<TextSelection | null>(null);
+	const [notesOpen, setNotesOpen] = useState(false);
+	const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
+	const pointerStart = useRef<{ x: number; y: number } | null>(null);
+	const jumpSequence = useRef(0);
+	useEffect(
+		() => () => {
+			jumpSequence.current++;
+		},
+		[],
+	);
+	const [highlightColor, setHighlightColor] = useState<HighlightColor>('yellow');
 	const geometries = useRef(new Map<number, PageGeometry>());
+	const [, setGeometryRevision] = useState(0);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const { selected, dismiss } = usePdfSelection({
+		root: scrollRef,
+		geometries,
+		enabled: !snipMode,
+		onSelection,
+		onError: onSelectionError,
+		onEscape: () => {
+			setSnipMode(false);
+			setSnipPage(null);
+		},
+	});
+	const creation = useHighlightCreation(saved);
 	useEffect(() => {
 		if (!docId || !persistent) return;
 		const subscription = liveQuery(async () => ({
@@ -143,51 +179,60 @@ function VirtualPages({
 		});
 		return () => subscription.unsubscribe();
 	}, [docId, persistent]);
-	async function localAction(action: () => Promise<unknown>) {
-		try {
-			await action();
-			setLocalError('');
-		} catch (error) {
-			setLocalError(error instanceof Error ? error.message : String(error));
-		}
+	function openHighlight(item: Highlight) {
+		dismiss(true);
+		setActiveHighlight(item.id);
+		setNotesOpen(true);
 	}
+	useEffect(() => {
+		if (activeHighlight && !saved.some(item => item.id === activeHighlight)) setActiveHighlight(null);
+	}, [saved, activeHighlight]);
+
 	function selectionAction(action: SelectionAction) {
 		if (!selected) return;
 		if (action === 'highlight' && docId && selected.rects && selected.anchor) {
-			void localAction(async () => {
-				await highlights.save({
-					docId,
-					page: selected.page,
-					rotation: selected.rotation,
-					rects: selected.rects!,
-					anchor: selected.anchor!,
-					color: 'yellow',
-				});
-				setSelected(null);
-				window.getSelection()?.removeAllRanges();
+			creation.create({
+				docId,
+				page: selected.page,
+				rotation: selected.rotation,
+				rects: selected.rects,
+				anchor: selected.anchor,
+				color: highlightColor,
 			});
+			dismiss(true);
 		} else if (action !== 'highlight') {
-			onAssistantAction?.(selected, action);
-			setSelected(null);
-			window.getSelection()?.removeAllRanges();
+			const passage = selected;
+			dismiss(true);
+			onAssistantAction?.(passage, action);
 		}
 	}
-	const scrollRef = useRef<HTMLDivElement>(null);
 	const [dimensions, setDimensions] = useState<PageDimensions[]>(() =>
 		Array.from({ length: pdf.numPages }, () => DEFAULT_PAGE),
 	);
-	const [fitWidth, setFitWidth] = useState(620);
+	const [viewportSize, setViewportSize] = useState({ width: 668, height: 840 });
+	const [fitMode, setFitMode] = useState<'manual' | 'width' | 'page'>(() => initialView.fit ?? 'manual');
 	const [zoom, setZoom] = useState(() => normalizeView(initialView).zoom);
 	const [currentPage, setCurrentPage] = useState(() => normalizeView(initialView, pdf.numPages).page);
 	const [pageDraft, setPageDraft] = useState(String(currentPage));
 	const anchor = useRef(normalizeView(initialView, pdf.numPages));
 	const restoring = useRef(true);
 	const restoreFrame = useRef(0);
-	const width = Math.round(fitWidth * zoom);
+	const manualWidth = Math.max(160, Math.min(900, viewportSize.width - 48));
+	const fitWidth =
+		fitMode === 'page'
+			? fitPageWidth(viewportSize.width, viewportSize.height, dimensions[currentPage - 1])
+			: fitMode === 'width'
+				? Math.max(160, viewportSize.width - 48)
+				: manualWidth;
+	const width = Math.max(1, Math.round(fitWidth * zoom));
 	const rows = useMemo(() => pageLayout(dimensions, width), [dimensions, width]);
 	const totalSize = rows.length ? rows.at(-1)!.start + rows.at(-1)!.size : 0;
+	const viewCallback = useRef(onViewChange);
+	viewCallback.current = onViewChange;
 	const rowsRef = useRef(rows);
 	const zoomRef = useRef(zoom);
+	const fitRef = useRef(fitMode);
+	fitRef.current = fitMode;
 	rowsRef.current = rows;
 	zoomRef.current = zoom;
 
@@ -202,12 +247,16 @@ function VirtualPages({
 	useLayoutEffect(() => {
 		const element = scrollRef.current;
 		if (!element) return;
-		const observer = new ResizeObserver(() => {
-			const available = Math.max(160, Math.min(900, element.clientWidth - 48));
-			setFitWidth(available);
-		});
+		const measure = () => {
+			const width = element.clientWidth,
+				height = element.clientHeight;
+			setViewportSize(previous =>
+				previous.width === width && previous.height === height ? previous : { width, height },
+			);
+		};
+		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		setFitWidth(Math.max(160, Math.min(900, element.clientWidth - 48)));
+		measure();
 		return () => observer.disconnect();
 	}, []);
 
@@ -224,30 +273,36 @@ function VirtualPages({
 		virtualizer.scrollToOffset(target, { align: 'start' });
 		restoreFrame.current = requestAnimationFrame(() => {
 			restoring.current = false;
-			const view = viewAtOffset(rows, element.scrollTop, zoom);
+			const view = {
+				...viewAtOffset(rows, element.scrollTop, zoom),
+				...(fitRef.current !== 'manual' ? { fit: fitRef.current } : {}),
+			};
 			anchor.current = view;
 			setCurrentPage(view.page);
-			onViewChange(view);
+			viewCallback.current(view);
 		});
 		return () => cancelAnimationFrame(restoreFrame.current);
-	}, [rows, zoom, virtualizer, onViewChange]);
+	}, [rows, zoom, virtualizer, fitMode]);
 
 	useEffect(() => setPageDraft(String(currentPage)), [currentPage]);
 
 	const measurePage = useCallback((page: PDFPageProxy) => {
 		const viewport = page.getViewport({ scale: 1 });
-		if (page.view && viewport.transform)
-			geometries.current.set(page.pageNumber, {
+		if (page.view && viewport.transform) {
+			const previous = geometries.current.get(page.pageNumber);
+			const geometry = {
 				rotation: page.rotate,
 				box: page.view,
 				transform: viewport.transform,
 				width: viewport.width,
 				height: viewport.height,
-			});
+			};
+			geometries.current.set(page.pageNumber, geometry);
+			if (JSON.stringify(previous) !== JSON.stringify(geometry)) setGeometryRevision(value => value + 1);
+		}
 		setDimensions(previous => {
 			const index = page.pageNumber - 1;
-			if (previous[index].width === viewport.width && previous[index].height === viewport.height)
-				return [...previous];
+			if (previous[index].width === viewport.width && previous[index].height === viewport.height) return previous;
 			const next = [...previous];
 			next[index] = { width: viewport.width, height: viewport.height };
 			return next;
@@ -255,82 +310,84 @@ function VirtualPages({
 	}, []);
 
 	function onScroll() {
-		setSelected(null);
 		if (restoring.current || !scrollRef.current) return;
-		const view = viewAtOffset(rowsRef.current, scrollRef.current.scrollTop, zoomRef.current);
+		const view = {
+			...viewAtOffset(rowsRef.current, scrollRef.current.scrollTop, zoomRef.current),
+			...(fitRef.current !== 'manual' ? { fit: fitRef.current } : {}),
+		};
 		anchor.current = view;
 		setCurrentPage(view.page);
 		onViewChange(view);
 	}
 
 	function changeZoom(next: number) {
+		jumpSequence.current++;
 		if (scrollRef.current && !restoring.current) {
 			anchor.current = viewAtOffset(rows, scrollRef.current.scrollTop, zoom);
 		}
-		setSelected(null);
+		dismiss(true);
+		setFitMode('manual');
 		setZoom(Math.max(0.5, Math.min(2, next)));
 	}
 
+	function changeFit(next: 'width' | 'page') {
+		jumpSequence.current++;
+		if (scrollRef.current && !restoring.current)
+			anchor.current = viewAtOffset(rows, scrollRef.current.scrollTop, zoom);
+		dismiss(true);
+		setFitMode(next);
+		setZoom(1);
+	}
+
 	function jumpToPage() {
+		jumpSequence.current++;
 		const page = Number(pageDraft);
 		if (!Number.isInteger(page) || page < 1 || page > pdf.numPages) {
 			setPageDraft(String(currentPage));
 			return;
 		}
-		anchor.current = { page, offset: 0, zoom };
+		anchor.current = { page, offset: 0, zoom, ...(fitMode !== 'manual' ? { fit: fitMode } : {}) };
 		setCurrentPage(page);
 		virtualizer.scrollToOffset(offsetForView(rows, anchor.current), { align: 'start' });
 		onViewChange(anchor.current);
 	}
 
-	function captureSelection() {
-		if (snipMode) return;
-		if (!scrollRef.current) return;
-		const result = capturePdfSelection(scrollRef.current, window.getSelection(), geometries.current);
-		if (typeof result === 'string') {
-			setSelected(null);
-			onSelection(null);
-			onSelectionError(result);
-		} else {
-			setSelected(result);
-			if (result) {
-				onSelection(result);
-				onSelectionError('');
-			}
+	async function jumpToHighlight(item: Highlight) {
+		const sequence = ++jumpSequence.current;
+		dismiss(true);
+		try {
+			const page = await pdf.getPage(item.page);
+			if (sequence !== jumpSequence.current) return;
+			measurePage(page);
+			const geometry = geometries.current.get(item.page);
+			const top = geometry ? Math.min(...item.rects.map(rect => projectRect(rect, geometry)[1])) : 0;
+			anchor.current = {
+				page: item.page,
+				offset: Math.max(0, top - 0.08),
+				zoom,
+				...(fitMode !== 'manual' ? { fit: fitMode } : {}),
+			};
+			setCurrentPage(item.page);
+			setActiveHighlight(item.id);
+			virtualizer.scrollToOffset(offsetForView(rowsRef.current, anchor.current), { align: 'start' });
+			onViewChange(anchor.current);
+			setLocalError('');
+		} catch (failure) {
+			if (sequence !== jumpSequence.current) return;
+			setLocalError(`Could not jump to this highlight: ${failureMessage(failure)}`);
 		}
 	}
-
-	useEffect(() => {
-		let frame = 0;
-		const changed = () => {
-			cancelAnimationFrame(frame);
-			frame = requestAnimationFrame(captureSelection);
-		};
-		const dismiss = () => setSelected(null);
-		const escape = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') {
-				dismiss();
-				window.getSelection()?.removeAllRanges();
-				setSnipMode(false);
-				setSnipPage(null);
-			}
-		};
-		document.addEventListener('keydown', escape);
-		window.addEventListener('resize', dismiss);
-		document.addEventListener('selectionchange', changed);
-		return () => {
-			document.removeEventListener('selectionchange', changed);
-			document.removeEventListener('keydown', escape);
-			window.removeEventListener('resize', dismiss);
-			cancelAnimationFrame(frame);
-		};
-	});
 
 	const controls = (
 		<ReaderToolbar
 			pageDraft={pageDraft}
 			pageCount={pdf.numPages}
-			zoom={zoom}
+			zoom={fitMode === 'manual' ? zoom : width / manualWidth}
+			fitMode={fitMode}
+			onFit={changeFit}
+			notesOpen={notesOpen}
+			highlightCount={saved.length}
+			onNotesToggle={() => setNotesOpen(open => !open)}
 			snipMode={snipMode}
 			onPageDraft={setPageDraft}
 			onPageJump={jumpToPage}
@@ -338,168 +395,226 @@ function VirtualPages({
 			onSnipToggle={() => {
 				setSnipMode(!snipMode);
 				setSnipPage(null);
-				setSelected(null);
-				window.getSelection()?.removeAllRanges();
+				dismiss(true);
 			}}
 		/>
 	);
 
 	return (
 		<>
-			{selected && <TextSelectionMenu selection={selected} persistent={persistent} onAction={selectionAction} />}
+			{selected && (
+				<TextSelectionMenu
+					selection={selected}
+					persistent={persistent}
+					onAction={selectionAction}
+					color={highlightColor}
+					onColor={setHighlightColor}
+				/>
+			)}
+			{creation.notice && (
+				<div className={viewport.highlightNotice}>
+					<span role={creation.notice.phase === 'error' ? 'alert' : 'status'}>{creation.notice.message}</span>
+					{creation.canUndo && (
+						<Button size='sm' variant='ghost' onClick={() => void creation.undo()}>
+							Undo highlight
+						</Button>
+					)}
+					<Button
+						size='sm'
+						variant='ghost'
+						aria-label='Dismiss highlight notification'
+						onClick={creation.dismissNotice}
+					>
+						×
+					</Button>
+				</div>
+			)}
 			{localError && (
 				<p role='alert' className={`reader-error ${viewport.inlineError}`}>
 					{localError}
 				</p>
 			)}
-			{(saved.length > 0 || notes.length > 0) && (
-				<details className={`local-notes ${viewport.localNotes}`}>
-					<summary>Notes ({saved.length})</summary>
-					{saved.map(item => (
-						<article key={item.id}>
-							<p dir='auto'>
-								p. {item.page} — {item.anchor.quote}
-							</p>
-							<Dropdown
-								label={`Highlight color ${item.id}`}
-								value={item.color}
-								onChange={color =>
-									void localAction(() => highlights.color(item.id, color as Highlight['color']))
-								}
-								options={['yellow', 'green', 'blue'].map(color => ({
-									value: color,
-									label: color[0].toUpperCase() + color.slice(1),
-									icon: '●',
-								}))}
-							/>
-							<Button
-								size='sm'
-								variant='ghost'
-								onClick={() => void localAction(() => highlights.remove(item.id))}
-							>
-								Remove highlight
-							</Button>
-							{notes
-								.filter(note => note.highlightId === item.id)
-								.map(note => (
-									<p key={note.id} dir='auto'>
-										{note.text}
-									</p>
-								))}
-							<form
-								onSubmit={event => {
-									event.preventDefault();
-									const form = event.currentTarget;
-									const text = String(new FormData(form).get('note') || '');
-									void localAction(async () => {
-										await highlights.addNote(item.id, text);
-										form.reset();
-									});
-								}}
-							>
-								<input
-									name='note'
-									aria-label={`Note for page ${item.page}`}
-									dir='auto'
-									maxLength={10000}
-									placeholder='Quick local note'
-									required
-								/>
-								<Button type='submit' size='sm'>
-									Add note
-								</Button>
-							</form>
-						</article>
-					))}
-				</details>
-			)}
 			{controlsHost ? createPortal(controls, controlsHost) : controls}
-			<ScrollArea
-				className={`pdf-scroll ${viewport.scroll}${snipMode ? ` ${viewport.snipping}` : ''}`}
-				ref={scrollRef}
-				onScroll={onScroll}
-				onPointerUp={captureSelection}
-				onKeyUp={captureSelection}
-				tabIndex={0}
-				aria-label='PDF pages'
-				data-page-count={pdf.numPages}
-				data-current-page={currentPage}
-			>
-				<div
-					className={`virtual-pages ${viewport.virtualPages}`}
-					style={{ height: totalSize, minWidth: width + 48 }}
+			<div className={viewport.readingBody}>
+				<ScrollArea
+					className={`pdf-scroll ${viewport.scroll}${snipMode ? ` ${viewport.snipping}` : ''}`}
+					ref={scrollRef}
+					onScroll={onScroll}
+					tabIndex={0}
+					aria-label='PDF pages'
+					data-page-count={pdf.numPages}
+					data-current-page={currentPage}
 				>
-					{virtualizer.getVirtualItems().map(item => {
-						const row = rows[item.index];
-						// Bound canvas memory even on high-DPI displays and at maximum zoom.
-						const pixelRatio = Math.min(
-							window.devicePixelRatio || 1,
-							2,
-							Math.sqrt(12_000_000 / (width * row.pageHeight)),
-						);
-						return (
-							<div
-								className={`virtual-page ${viewport.virtualPage}`}
-								key={item.key}
-								data-pdf-page={item.index + 1}
-								style={{ transform: `translateY(${row.start}px)`, height: row.size }}
-							>
-								<div className={`page-content ${viewport.pageContent}`} style={{ width }}>
-									<div className={`page-label ${viewport.pageLabel}`}>PAGE {item.index + 1}</div>
-									<div className={`annotated-page ${viewport.annotatedPage}`}>
-										<Page
-											pageNumber={item.index + 1}
-											width={width}
-											devicePixelRatio={pixelRatio}
-											onLoadSuccess={measurePage}
-											renderTextLayer
-											renderAnnotationLayer
-											loading={
-												<div
-													className={`page-loading ${viewport.pageLoading}`}
-													style={{ height: row.pageHeight }}
-												>
-													Rendering page {item.index + 1}…
-												</div>
-											}
-											error={
-												<p className={`reader-error ${viewport.inlineError}`}>
-													Could not render page {item.index + 1}.
-												</p>
-											}
-										/>
-										{geometries.current.get(item.index + 1) && (
-											<HighlightOverlay
-												items={saved.filter(h => h.page === item.index + 1)}
-												geometry={geometries.current.get(item.index + 1)!}
-											/>
-										)}
-										{snipMode && (
-											<SnipOverlay
-												page={item.index + 1}
+					<div
+						className={`virtual-pages ${viewport.virtualPages}`}
+						style={{ height: totalSize, minWidth: width + 48 }}
+					>
+						{virtualizer.getVirtualItems().map(item => {
+							const row = rows[item.index];
+							// Bound canvas memory even on high-DPI displays and at maximum zoom.
+							const pixelRatio = Math.min(
+								window.devicePixelRatio || 1,
+								2,
+								Math.sqrt(12_000_000 / (width * row.pageHeight)),
+							);
+							return (
+								<div
+									className={`virtual-page ${viewport.virtualPage}`}
+									key={item.key}
+									data-pdf-page={item.index + 1}
+									style={{ transform: `translateY(${row.start}px)`, height: row.size }}
+								>
+									<div className={`page-content ${viewport.pageContent}`} style={{ width }}>
+										<div className={`page-label ${viewport.pageLabel}`}>PAGE {item.index + 1}</div>
+										<div
+											className={`annotated-page ${viewport.annotatedPage}`}
+											onPointerDown={event => {
+												pointerStart.current = { x: event.clientX, y: event.clientY };
+											}}
+											onClick={event => {
+												const start = pointerStart.current;
+												pointerStart.current = null;
+												if (
+													snipMode ||
+													event.detail !== 1 ||
+													event.button !== 0 ||
+													!start ||
+													Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5 ||
+													!window.getSelection()?.isCollapsed
+												)
+													return;
+												const geometry = geometries.current.get(item.index + 1);
+												if (!geometry) return;
+												const target = highlightAtPoint(
+													saved.filter(h => h.page === item.index + 1),
+													geometry,
+													event.currentTarget.getBoundingClientRect(),
+													event.clientX,
+													event.clientY,
+												);
+												if (target) openHighlight(target);
+											}}
+										>
+											<Page
+												pageNumber={item.index + 1}
 												width={width}
-												activePage={snipPage}
-												onActivate={() => setSnipPage(item.index + 1)}
-												onCancel={() => {
-													setSnipMode(false);
-													setSnipPage(null);
-												}}
-												getPage={() => pdf.getPage(item.index + 1)}
-												onExplain={(page, image, question) => {
-													setSnipMode(false);
-													setSnipPage(null);
-													onSnip?.({ page, image, question });
-												}}
+												devicePixelRatio={pixelRatio}
+												onLoadSuccess={measurePage}
+												renderTextLayer
+												renderAnnotationLayer
+												loading={
+													<div
+														className={`page-loading ${viewport.pageLoading}`}
+														style={{ height: row.pageHeight }}
+													>
+														Rendering page {item.index + 1}…
+													</div>
+												}
+												error={
+													<p className={`reader-error ${viewport.inlineError}`}>
+														Could not render page {item.index + 1}.
+													</p>
+												}
 											/>
-										)}
+											{geometries.current.get(item.index + 1) && (
+												<HighlightOverlay
+													items={creation.items.filter(h => h.page === item.index + 1)}
+													activeId={notesOpen ? activeHighlight : null}
+													onActivate={
+														snipMode
+															? undefined
+															: item => {
+																	if (saved.some(s => s.id === item.id))
+																		openHighlight(item);
+																}
+													}
+													geometry={geometries.current.get(item.index + 1)!}
+												/>
+											)}
+											{snipMode && (
+												<SnipOverlay
+													page={item.index + 1}
+													width={width}
+													activePage={snipPage}
+													onActivate={() => setSnipPage(item.index + 1)}
+													onCancel={() => {
+														setSnipMode(false);
+														setSnipPage(null);
+													}}
+													getPage={() => pdf.getPage(item.index + 1)}
+													onExplain={(page, image, question) => {
+														setSnipMode(false);
+														setSnipPage(null);
+														onSnip?.({ page, image, question });
+													}}
+												/>
+											)}
+										</div>
 									</div>
 								</div>
-							</div>
+							);
+						})}
+					</div>
+				</ScrollArea>
+				<NotesPanel
+					onExport={
+						persistent && docId
+							? () => {
+									void libraryTransfer
+										.markdown(docId)
+										.then(blob => downloadFile(blob, 'nota-research-notes.md'))
+										.catch(failure =>
+											setLocalError(`Could not export notes: ${failureMessage(failure)}`),
+										);
+								}
+							: undefined
+					}
+					open={notesOpen}
+					items={saved}
+					notes={notes}
+					activeId={activeHighlight}
+					onClose={() => {
+						setNotesOpen(false);
+						const root = controlsHost ?? scrollRef.current?.closest('.pdf-document');
+						root?.querySelector<HTMLElement>('[aria-controls="highlight-notes-panel"]')?.focus({
+							preventScroll: true,
+						});
+					}}
+					onSelect={setActiveHighlight}
+					onJump={item => void jumpToHighlight(item)}
+					onColor={highlights.color}
+					onRemove={highlights.remove}
+					onAddNote={highlights.addNote}
+					onUpdateNote={highlights.updateNote}
+					onRemoveNote={highlights.removeNote}
+					onExplain={item => {
+						dismiss(true);
+						onAssistantAction?.(
+							{
+								text: item.anchor.quote,
+								page: item.page,
+								rects: item.rects,
+								anchor: item.anchor,
+								rotation: item.rotation,
+							},
+							'explain',
 						);
-					})}
-				</div>
-			</ScrollArea>
+					}}
+					onAsk={item => {
+						dismiss(true);
+						onAssistantAction?.(
+							{
+								text: item.anchor.quote,
+								page: item.page,
+								rects: item.rects,
+								anchor: item.anchor,
+								rotation: item.rotation,
+							},
+							'ask',
+						);
+					}}
+				/>
+			</div>
 		</>
 	);
 }
-

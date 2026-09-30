@@ -1,4 +1,4 @@
-/* Dropdown — Raycast-style command popover replacing native <select>. */
+/* Dropdown — tactile command popover */
 .root {
 	position: relative;
 	min-width: 0;
@@ -7,13 +7,13 @@
 }
 .trigger {
 	width: 100%;
-	height: 30px;
+	height: 32px;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
 	min-width: 0;
-	padding: 0 8px 0 10px;
+	padding: 0 9px 0 11px;
 	border: 1px solid var(--ui-border);
 	border-radius: var(--ui-radius-sm);
 	background: var(--ui-surface-raised);
@@ -21,7 +21,8 @@
 	text-align: start;
 	font: inherit;
 	font-size: 12px;
-	font-weight: 550;
+	font-weight: 600;
+	letter-spacing: -0.01em;
 	cursor: pointer;
 	box-shadow: var(--ui-shadow-xs);
 	transition:
@@ -32,14 +33,16 @@
 .trigger:hover {
 	background: var(--ui-surface-hover);
 	border-color: var(--ui-border-strong);
+	box-shadow: var(--ui-shadow-sm);
 }
 .trigger:focus-visible,
 .search:focus-visible {
 	outline: 2px solid var(--ui-ring);
 	outline-offset: 2px;
+	box-shadow: 0 0 0 4px var(--ui-ring-soft);
 }
 .trigger:disabled {
-	opacity: 0.55;
+	opacity: 0.5;
 	cursor: not-allowed;
 	box-shadow: none;
 }
@@ -51,16 +54,14 @@
 }
 .triggerPlaceholder {
 	color: var(--ui-faint);
-	font-weight: 450;
+	font-weight: 500;
 }
-
-/* Chevron: smooth rotation on open, bidi-safe */
 .chevron {
 	flex: none;
 	display: inline-grid;
 	place-items: center;
-	width: 14px;
-	height: 14px;
+	width: 16px;
+	height: 16px;
 	color: var(--ui-faint);
 	font-size: 13px;
 	line-height: 1;
@@ -80,72 +81,86 @@
 	transform: rotate(180deg);
 	color: var(--ui-muted);
 }
-
+.trigger[aria-expanded='true'] {
+	border-color: var(--ui-ring);
+	box-shadow:
+		0 0 0 3px var(--ui-ring-soft),
+		var(--ui-shadow-xs);
+}
 .popover {
 	position: fixed;
 	display: flex;
 	flex-direction: column;
 	z-index: 200;
 	width: max(100%, 200px);
-	max-width: min(320px, 90vw);
-	padding: 5px;
+	max-width: min(340px, 92vw);
+	padding: 6px;
 	background: var(--ui-surface-raised);
 	color: var(--ui-text);
 	border: 1px solid var(--ui-border);
 	border-radius: var(--ui-radius-md);
 	box-shadow: var(--ui-shadow-pop);
-	animation: appear var(--ui-duration) var(--ui-ease);
+	animation: appear 160ms var(--ui-ease-out);
 	transform-origin: top center;
 }
 .popover.closing {
 	pointer-events: none;
-	animation: disappear var(--ui-duration) ease-in forwards;
+	animation: disappear 140ms ease-in forwards;
 }
 .search {
 	width: 100%;
-	height: 32px;
-	margin-bottom: 5px;
-	padding: 0 9px;
+	height: 34px;
+	margin-bottom: 6px;
+	padding: 0 10px;
 	background: var(--ui-surface-sunken);
 	color: var(--ui-text);
 	border: 1px solid var(--ui-border-soft);
-	border-radius: var(--ui-radius-xs);
+	border-radius: var(--ui-radius-sm);
 	font: inherit;
-	font-size: 12px;
+	font-size: 12.5px;
+	flex-shrink: 0;
+	transition:
+		border-color var(--ui-duration) var(--ui-ease),
+		box-shadow var(--ui-duration) var(--ui-ease);
 }
 .search::placeholder {
 	color: var(--ui-faint);
 }
 .list {
-	max-height: 248px;
+	flex: 1;
+	max-height: 300px;
 	overflow: auto;
 	overscroll-behavior: contain;
 	scrollbar-width: thin;
 	scrollbar-color: var(--ui-border-strong) transparent;
 	padding: 1px;
+	min-height: 0;
 }
 .option {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	min-height: 33px;
-	padding: 6px 8px;
-	border-radius: var(--ui-radius-xs);
+	min-height: 34px;
+	padding: 7px 10px;
+	border-radius: var(--ui-radius-sm);
 	font-size: 12.5px;
 	font-weight: 500;
 	cursor: pointer;
 	text-align: start;
-	transition: background 110ms var(--ui-ease);
+	transition:
+		background 110ms var(--ui-ease),
+		color 110ms var(--ui-ease);
 }
 .option.active {
 	background: var(--ui-surface-hover);
 }
 .option[aria-selected='true'] {
-	color: var(--ui-text);
+	color: var(--ui-text-strong);
 	font-weight: 650;
+	background: var(--ui-accent-soft);
 }
-.option[aria-selected='true'] .itemLabel {
-	font-weight: 650;
+.option[aria-selected='true'].active {
+	background: color-mix(in srgb, var(--ui-accent-soft) 85%, var(--ui-surface-hover) 15%);
 }
 .option.disabled {
 	opacity: 0.45;
@@ -174,24 +189,24 @@
 }
 .badge {
 	flex: none;
-	padding: 2px 6px;
+	padding: 2px 7px;
 	border-radius: var(--ui-radius-pill);
 	background: var(--ui-surface-active);
 	color: var(--ui-muted);
 	font-size: 10px;
-	font-weight: 650;
-	letter-spacing: 0.02em;
+	font-weight: 700;
+	letter-spacing: 0.03em;
 }
 .empty {
-	padding: 10px;
+	padding: 12px;
 	color: var(--ui-muted);
-	font-size: 11.5px;
+	font-size: 12px;
+	text-align: center;
 }
-
 @keyframes appear {
 	from {
 		opacity: 0;
-		transform: translateY(-4px) scale(0.99);
+		transform: translateY(-6px) scale(0.98);
 	}
 	to {
 		opacity: 1;
@@ -201,7 +216,7 @@
 @keyframes disappear {
 	to {
 		opacity: 0;
-		transform: translateY(-4px) scale(0.99);
+		transform: translateY(-6px) scale(0.98);
 	}
 }
 @media (prefers-reduced-motion: reduce) {
@@ -214,11 +229,3 @@
 		transition: none;
 	}
 }
-
-.list {
-	min-height: 0;
-}
-.search {
-	flex-shrink: 0;
-}
-

@@ -1,15 +1,19 @@
 # Nota — Architectural Plan and Technical Specification
 
-**Status:** Proposed, before implementation  
-**Date:** 2026-09-28  
+**Status:** Historical pre-implementation proposal **Date:** 2026-09-28  
 **Target:** Desktop browsers, with a local web app and an existing Ollama daemon
+
+This document preserves the original design intent and includes unimplemented proposals, such as Tailwind and persisted
+chats. The shipped app uses CSS Modules/shared UI components and memory-only conversation history. See
+[README](../README.md), [release verification](RELEASE_CANDIDATE.md), and [UI review](UI_REVIEW.md) for current
+behavior.
 
 ## 1. Product contract
 
 Nota is a reading workspace: the PDF stays visible in the left pane while the right pane offers a bilingual tutor.
-Reading, selecting, and highlighting are local operations. **Only an explicit `Translate / Clarify`, `Ask Nota`, or
-`Explain snip` action sends content to a model.** Opening a PDF, changing pages, and restoring notes never invoke
-inference.
+Reading, selecting, and highlighting are local operations. **Only an explicit `Translate / Clarify`, `Explain`,
+`Send question`, `Send follow-up`, or `Explain snip` action sends content to a model.** `Ask` opens a draft without
+inference. Opening a PDF, changing pages, and restoring notes never invoke inference.
 
 “Local-first” describes the document and application state: PDFs, annotations, and conversations live in the browser's
 IndexedDB and the interface remains useful when inference is unavailable. The requested default, `gemma4:31b-cloud`, is
@@ -185,8 +189,18 @@ shows a static mascot frame and text status. No animation timer triggers an API 
 The cache is bounded by age and size (initial target: 7 days / 50 MB, adjustable). Do not index full answer text
 unnecessarily. Database migrations use Dexie's versioned schema; test upgrade from each released version. Handle storage
 eviction and quota errors. Provide per-document deletion and a full local-data wipe. Optionally request persistent
-browser storage after the user has imported documents; clearly say browser storage is not a backup. A future
-export/import package can address backup.
+browser storage after the user has imported documents; clearly say browser storage is not a backup.
+
+The current release provides Markdown export and a versioned `nota-library` JSON backup through
+`features/library/transfer.ts`. A consistent read transaction captures PDFs, document views, highlights and notes; PDF
+bytes are base64 encoded outside the transaction. Import checks file size (256 MiB maximum), schema, unique IDs, PDF
+hashes and annotation links before showing a preview. A single write transaction merges missing records, preserves
+existing edits and rolls back identifier conflicts. Response caches and session conversations are excluded.
+
+`features/workspace/useWorkspaceLayout.ts` persists pane proportions and assistant visibility in localStorage. Focus
+mode keeps assistant conversation state mounted but makes the hidden pane inert and pauses the mascot by unmounting its
+renderer. The fullscreen state follows browser events. Reader views optionally store `fit: width | page | manual`; older
+views remain compatible. Viewport resizing preserves the normalized page anchor, including in fit modes.
 
 ### Request key and debounce
 
@@ -399,4 +413,3 @@ Primary documentation reviewed for this plan: [PDF.js](https://mozilla.github.io
 [Ollama vision](https://docs.ollama.com/capabilities/vision), [Ollama cloud](https://docs.ollama.com/cloud),
 [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API),
 [Dexie](https://dexie.org/docs/API-Reference), [KaTeX](https://katex.org/docs/autorender.html).
-

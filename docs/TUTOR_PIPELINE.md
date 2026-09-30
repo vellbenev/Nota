@@ -118,3 +118,19 @@ final verification run passed 36 tests, typecheck and the production build (with
    Highlighting, notes and ordinary reading must still produce zero Ollama requests.
 9. Stop Ollama or enter an unavailable model and regenerate: expect an actionable error while the reader remains usable.
 
+## Explain, Ask and continuing a response
+
+**Explain** submits the selected passage with a short explanation request. **Ask** captures its passage and opens a
+focused composer; opening or typing never starts inference. Highlight editors expose the same two actions. Snip
+explanation remains an explicit image submission.
+
+Up to 12 response turns remain visible in the current reading session. Each turn has its own follow-up draft and
+suggested questions; suggestions populate the draft and require **Send follow-up**. Follow-ups use that turn's exact
+document, page, passage, nearby text or original image, answer language, and bounded preceding conversation. A reply to
+an older answer branches from it, excluding later answers on other branches. Fresh passage/image requests use empty
+history. Request-context previews show the history actually sent.
+
+Regenerate replaces the current turn rather than adding a duplicate. Stop and document-switch cancellation still reject
+stale stream events. Switching documents clears the visible transcript; follow-up drafts and image previews are
+session-only and do not write a chat archive to IndexedDB. The context envelope retains its existing limit of six
+history entries and 4,000 characters.

@@ -23,15 +23,20 @@ actions. Choose a local model to keep inference on your machine, or opt into a c
 ## Key features
 
 - 📄 **PDF reader & virtualized viewport.** PDF.js through React-PDF powers continuous multi-page scrolling, page
-  navigation, and 50–200% zoom. Only pages near the viewport mount their rendering layers. Your library remembers
-  reading position and zoom, and identical files are deduplicated by SHA-256.
+  navigation, Fit width / Fit page, and 50–200% manual zoom. Only pages near the viewport mount their rendering layers.
+  Your library remembers reading position, zoom and fit mode, and identical files are deduplicated by SHA-256.
 - 🖍️ **Normalized highlighting & local notes.** Page-relative geometric coordinates keep highlights aligned through zoom
   and PDF rotation. Highlights and notes persist in IndexedDB through Dexie.js, alongside your PDF library.
+- 📦 **Research you can take with you.** Export highlights and notes as Markdown with page numbers, or back up your
+  whole library—including PDFs—and restore it in another browser. Imports preserve existing work and avoid duplicates.
+- 🌿 **Focus mode.** Hide the assistant completely, enter fullscreen, and adjust the workspace to your reading style.
+  Pane sizes and assistant visibility are remembered; an explicit Ask or Explain brings Nota back when you need it.
 - ✂️ **Snip mode.** Select an equation, table, or complex diagram and explicitly request a multimodal explanation. Crops
   stay in memory; Nota checks the model's vision capability before submission.
 - 🤖 **AI mentor & Rive mascot.** Translate, clarify, or ask about a passage through Ollama, using `gemma4:31b-cloud` or
   a manually selected local alternative. Responses stream as Markdown with KaTeX math. Assistant states drive the
-  mascot's idle, pondering, explaining, and error poses; an SVG fallback supports load failures and reduced motion.
+  mascot's idle, pondering, explaining, and error poses; a minimal loading indicator precedes the animation, with a
+  retry control for load failures.
 - 🔒 **Privacy by design.** Zero application telemetry, local document storage, and zero background inference triggers.
   Importing, scrolling, selecting, highlighting, and drawing a snip never invoke a model. **Fully local inference
   requires a local model and a loopback Ollama endpoint.**
@@ -53,8 +58,32 @@ badge reflects the configured model name and endpoint, rather than verifying a c
 
 Local storage is scoped to the browser and origin: `localhost`, `127.0.0.1`, and different ports have separate
 libraries. Browser storage is not an encrypted vault or a backup; clearing browser site data or storage eviction can
-remove it. Keep your original PDFs. **Data & privacy** lets you delete a paper and its associated data or reset the
-library. Close other Nota tabs before deletion.
+remove it. Keep your original PDFs and make regular library backups. **Data & privacy** lets you export, back up,
+restore, delete a paper and its associated data, or reset the library. Close other Nota tabs before deletion.
+
+## Keep your research and shape your workspace
+
+Open **Data & privacy** in the reader header to export Markdown for the current paper or all saved papers. The
+**Export** button in the notes panel exports that paper directly. Markdown includes the paper name, PDF fingerprint,
+highlight color, quoted text, page number and associated notes.
+
+**Back up library** downloads a versioned JSON file containing original PDF bytes, reading positions, fit modes,
+highlights and notes. **Import backup** checks PDF fingerprints and annotation links, then shows a preview before
+restoring. Restoration adds missing items in one transaction, keeps existing edits and reading positions, and creates no
+duplicates when repeated. Cached AI responses, session conversations and workspace preferences are excluded. Backups are
+unencrypted files; keep them somewhere private. The maximum backup/import file size is **256 MiB**.
+
+Choose **Focus** or the assistant's close button to give the PDF the entire workspace. **Show Nota** restores the
+assistant and its current conversation; **Alt + \*\* toggles focus. **Fullscreen** uses the browser's fullscreen mode;
+press **Escape** to leave it. Choose **Fit width** or **Fit page\*\* from the Zoom menu. Fit modes adapt to viewport
+changes while preserving your reading position; selecting a percentage returns to manual zoom.
+
+Drag the divider or focus it and use arrow keys to resize the panes; **Home** restores the default proportion. Pane
+sizes and assistant visibility persist in this browser. Narrow screens use a vertical split, and reduced-motion
+preferences disable the focus animation.
+
+Choose **Settings → Appearance → Color theme** to use **System**, **Light**, or **Dark**. The choice persists locally;
+System follows your operating system. Menus and crop controls stay within the visible workspace, including fullscreen.
 
 ## Tech stack
 
@@ -65,7 +94,7 @@ library. Close other Nota tabs before deletion.
 | Storage            | Dexie.js / IndexedDB; SHA-256 document identity in a Web Worker                                          |
 | AI integration     | Browser `fetch` to Ollama, streamed NDJSON, bounded versioned prompts, cancellation and response caching |
 | Response rendering | React Markdown, remark-gfm, remark-math, rehype-katex and KaTeX                                          |
-| Mascot             | Rive React canvas runtime with local WASM, state projection and SVG fallback                             |
+| Mascot             | Rive React canvas runtime with local WASM, state projection and minimal loading state                    |
 | Verification       | Node.js test runner, Vitest, Testing Library and fake-indexeddb                                          |
 
 ## Getting started
@@ -103,8 +132,9 @@ browser library. For reproducible dependency installation, use `npm ci`.
 
 3. In Nota, keep the endpoint at `http://localhost:11434`, enter the exact installed model tag (for example
    `gemma4:e2b`), and press **Check**. Changing the model does not start inference.
-4. Open a PDF, select a passage, and choose **Translate / Clarify** or **Ask Nota**. For an image, use **Snip mode →
-   Explain snip** with a vision-capable model.
+4. Open a PDF, select a passage, and choose **Translate / Clarify**, **Explain**, or **Ask**. Ask opens a draft; sending
+   the question starts inference. Continue from the composer below each answer without selecting text again. For an
+   image, use **Snip mode → Explain snip** with a vision-capable model.
 
 The [Gemma 4 model catalog](https://ollama.com/library/gemma4) lists local and cloud variants. Text-only models can
 handle passage requests; snips require a model reporting vision capability through Ollama's `/api/show`. Nota has **no
@@ -156,7 +186,7 @@ Nota/
 │   │   ├── library/         # Import, deduplication and reading restoration
 │   │   ├── highlights/      # Highlight rendering
 │   │   ├── assistant/       # Request lifecycle, streaming and rich responses
-│   │   ├── mascot/          # Rive adapter, state projection and fallback
+│   │   ├── mascot/          # Rive adapter, state projection and loading state
 │   │   └── settings/        # Data controls and model route labels
 │   ├── infrastructure/
 │   │   ├── db/              # Dexie schema and repositories
@@ -180,9 +210,10 @@ npm run preview -- --port 4173
 ```
 
 `npm test` runs the unit and UI suites without a live model. They cover storage transactions, document identity,
-viewport geometry, request cancellation, caching, snips, explicit submission, and mascot behavior. The asset audit
-verifies bundled references and application chunk limits. `npm run build` generates `dist/`; it is excluded from source
-control.
+viewport geometry, request cancellation, caching, snips, explicit submission, and mascot behavior. They also cover
+nested overlays, modal focus and busy states, theme selection, mixed-language paragraph direction, and PDF line breaks.
+The asset audit verifies bundled references and application chunk limits. `npm run build` generates `dist/`; it is
+excluded from source control.
 
 Production preview is available at `http://127.0.0.1:4173/` and has its own browser library. If using AI there, allow
 that origin in Ollama too. Nota has no service worker: serving the built app is still required, even when reading and
@@ -195,6 +226,7 @@ For implementation details and manual checks:
 - [Tutor pipeline](docs/TUTOR_PIPELINE.md)
 - [Snip mode](docs/SNIP_MODE.md)
 - [Release verification](docs/RELEASE_CANDIDATE.md)
+- [UI review and browser coverage](docs/UI_REVIEW.md)
 - [Rive asset contract](public/mascot/README.md)
 - [Original architecture proposal](docs/ARCHITECTURE.md) — historical design intent; some proposed choices differ from
   the implementation.
@@ -212,4 +244,3 @@ Nota's source code is available under the **[MIT License](LICENSE)**. Dependenci
 assets retain their respective licenses. The mascot is
 [Character poses by avocadenko](https://rive.app/marketplace/28745-54500-character-poses/), licensed under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-

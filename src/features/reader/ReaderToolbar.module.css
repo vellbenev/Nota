@@ -2,6 +2,7 @@
 	flex: none;
 	min-height: 30px;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 8px;
 	padding: 0;
@@ -10,94 +11,124 @@
 	font-size: 12px;
 	white-space: nowrap;
 	overflow: visible;
-	scrollbar-width: none;
-}
-.readerBar::-webkit-scrollbar {
-	display: none;
 }
 .pageJump {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	flex: none;
+	padding: 2px 6px 2px 8px;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-sunken);
+	border: 1px solid var(--ui-border-soft);
+	transition:
+		border-color var(--ui-duration) var(--ui-ease),
+		box-shadow var(--ui-duration) var(--ui-ease);
+}
+.pageJump:focus-within {
+	border-color: var(--ui-ring);
+	box-shadow: 0 0 0 3px var(--ui-ring-soft);
 }
 .pageJump label {
 	color: var(--ui-muted);
-	font-size: 11.5px;
-	font-weight: 600;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
 }
 .pageJump input {
-	width: 46px;
-	height: 30px;
+	width: 44px;
+	height: 26px;
 	padding: 2px 6px;
 	text-align: center;
 	font-size: 12px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
 	border: 1px solid var(--ui-border);
 	border-radius: var(--ui-radius-xs);
 	background: var(--ui-surface-raised);
 	color: var(--ui-text);
 	outline: none;
+	transition:
+		border-color var(--ui-duration) var(--ui-ease),
+		background var(--ui-duration) var(--ui-ease);
 }
 .pageJump input:focus-visible {
-	outline: 2px solid var(--ui-ring);
-	outline-offset: 1px;
+	outline: none;
+	border-color: var(--ui-ring);
 }
 .pageTotal {
 	color: var(--ui-faint);
 	font-size: 11.5px;
+	font-variant-numeric: tabular-nums;
 }
 .zoomGroup {
 	display: flex;
 	align-items: center;
 	gap: 4px;
 	flex: none;
-}
-.zoomValue {
-	min-width: 44px;
-	text-align: center;
-	font-size: 11.5px;
-	font-weight: 650;
-	font-variant-numeric: tabular-nums;
+	padding: 3px 6px;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-sunken);
+	border: 1px solid var(--ui-border-soft);
 }
 .zoomMenu {
-	width: 84px;
+	width: 102px;
 	flex: none;
 }
+.zoomMenu > button {
+	padding-inline: 8px;
+	gap: 6px;
+	border-radius: var(--ui-radius-pill);
+}
 .snipToggle[aria-pressed='true'] {
-	background: var(--ui-accent-soft);
-	border-color: var(--ui-accent);
+	background: var(--ui-accent) !important;
+	border-color: var(--ui-accent) !important;
+	color: var(--ui-accent-text) !important;
+	box-shadow: 0 2px 8px color-mix(in srgb, var(--ui-accent) 30%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+	.pageJump,
+	.pageJump input {
+		transition: none;
+	}
 }
 
-.zoomGroup {
-	padding-inline: 6px;
-	border-inline: 1px solid var(--ui-border-soft);
+.pageJump input {
+	min-height: 32px;
+	height: 32px;
+	padding-block: 0;
 }
-.zoomMenu > button {
-	padding-inline: 7px;
-	gap: 4px;
+.pageTotal {
+	color: var(--ui-muted);
 }
-@media (max-width: 600px) {
+
+.readerBar {
+	width: 100%;
+	min-width: 0;
+}
+
+@container (max-width: 600px) {
 	.readerBar {
-		gap: 3px;
+		gap: 4px;
 	}
 	.pageJump {
-		gap: 3px;
+		gap: 4px;
+		padding-inline: 6px;
 	}
 	.pageJump label {
 		display: none;
 	}
 	.pageJump input {
-		width: 35px;
+		width: 32px;
 	}
 	.zoomGroup {
-		padding-inline: 2px;
-		gap: 1px;
+		gap: 2px;
+		padding-inline: 4px;
 	}
 	.zoomMenu {
-		width: 72px;
+		width: 94px;
 	}
 	.snipToggle {
-		padding-inline: 6px;
+		padding-inline: 8px;
 	}
 }
-

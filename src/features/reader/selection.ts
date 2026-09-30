@@ -10,7 +10,17 @@ export interface TextSelection {
 	rotation?: number;
 	rects?: NormalizedRect[];
 	anchor?: TextAnchor;
-	position?: { left: number; top: number };
+	position?: { left: number; top: number; bottom?: number };
+}
+
+/** PDF.js uses presentation BR elements; Range.toString() drops those line breaks. */
+function readableRange(range: Range) {
+	function text(node: Node): string {
+		if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+		if (node instanceof Element && node.tagName === 'BR') return '\n';
+		return Array.from(node.childNodes).map(text).join('');
+	}
+	return text(range.cloneContents());
 }
 
 export function capturePdfSelection(
@@ -31,10 +41,10 @@ export function capturePdfSelection(
 	if (!start || !end || start !== end || !root.contains(start) || !root.contains(end)) {
 		return 'Select text from one PDF page at a time.';
 	}
-	const text = range.toString();
+	const text = readableRange(range);
 	if (!text.trim()) return null;
 	if (/[\uFB50-\uFDFF\uFE70-\uFEFF]/u.test(text)) {
-		return 'This PDF exposes shaped glyphs instead of readable Persian text. Use a PDF with a correct text map; snip support is planned for a later phase.';
+		return 'This PDF exposes shaped glyphs instead of readable Persian text. Use a PDF with a correct text map; Use Snip mode to request an explanation of this area.';
 	}
 	if (text.length > 6000) return 'Select at most 6,000 characters at a time.';
 	const page = Number(start.dataset.pdfPage);
@@ -56,8 +66,7 @@ export function capturePdfSelection(
 		nearby: captureNearby(layer, range),
 		rotation: geometry.rotation ?? 0,
 		rects,
-		anchor: { quote: text, prefix: before.toString().slice(-64), suffix: after.toString().slice(0, 64) },
-		position: { left: position.left, top: position.top },
+		anchor: { quote: text, prefix: readableRange(before).slice(-64), suffix: readableRange(after).slice(0, 64) },
+		position: { left: position.left, top: position.top, bottom: position.bottom },
 	};
 }
-

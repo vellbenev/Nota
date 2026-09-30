@@ -1,30 +1,36 @@
-/* IconButton — square quiet action (zoom +/-, toolbar tools). */
 .iconButton {
-	display: inline-grid;
-	place-items: center;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	flex: none;
-	border: 1px solid transparent;
-	border-radius: 7px;
-	background: transparent;
-	color: var(--ui-text);
+	border: 1px solid var(--ui-border);
+	border-radius: 9px;
+	background: var(--ui-surface-raised);
+	color: var(--ui-text-strong);
 	font: inherit;
 	line-height: 1;
 	cursor: pointer;
+	box-shadow: var(--ui-shadow-xs);
 	transition:
 		background var(--ui-duration) var(--ui-ease),
 		border-color var(--ui-duration) var(--ui-ease),
-		transform var(--ui-duration) var(--ui-ease);
+		box-shadow var(--ui-duration) var(--ui-ease),
+		transform 120ms var(--ui-ease);
 }
 .iconButton:focus-visible {
 	outline: 2px solid var(--ui-ring);
 	outline-offset: 2px;
+	box-shadow:
+		0 0 0 4px var(--ui-ring-soft),
+		var(--ui-shadow-xs);
 }
 .iconButton:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
+	box-shadow: none;
 }
 .iconButton:active:not(:disabled) {
-	transform: scale(0.94);
+	transform: translateY(1px) scale(0.97);
 }
 
 .md {
@@ -34,13 +40,14 @@
 	font-size: 16px;
 }
 .sm {
-	width: 26px;
-	height: 26px;
-	min-height: 26px;
+	width: 30px;
+	height: 30px;
+	min-height: 30px;
 	font-size: 14px;
 }
 
 .ghost:hover:not(:disabled) {
+	border-color: var(--ui-border-strong);
 	background: var(--ui-surface-hover);
 }
 .ghost:active:not(:disabled) {
@@ -48,7 +55,7 @@
 }
 .secondary {
 	background: var(--ui-surface-raised);
-	border-color: var(--ui-border);
+	border-color: var(--ui-border-strong);
 	box-shadow: var(--ui-shadow-xs);
 }
 .secondary:hover:not(:disabled) {
@@ -60,7 +67,7 @@
 }
 .subtle:hover:not(:disabled) {
 	background: var(--ui-surface-hover);
-	color: var(--ui-text);
+	color: var(--ui-text-strong);
 }
 .primary {
 	background: var(--ui-accent);
@@ -90,4 +97,3 @@
 		animation: none;
 	}
 }
-

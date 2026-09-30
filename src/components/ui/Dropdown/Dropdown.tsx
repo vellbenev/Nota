@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { useOverlayHost } from '../overlay';
 import styles from './Dropdown.module.css';
 import type { DropdownOption, DropdownProps } from './types';
 
@@ -21,6 +22,7 @@ export function Dropdown({
 		trigger = useRef<HTMLButtonElement>(null),
 		search = useRef<HTMLInputElement>(null),
 		list = useRef<HTMLDivElement>(null);
+	const host = useOverlayHost(trigger);
 	const [open, setOpen] = useState(false),
 		[mounted, setMounted] = useState(false),
 		[query, setQuery] = useState(''),
@@ -35,7 +37,7 @@ export function Dropdown({
 	function dismiss(restoreFocus = false) {
 		setOpen(false);
 		setQuery('');
-		if (restoreFocus) trigger.current?.focus();
+		if (restoreFocus) trigger.current?.focus({ preventScroll: true });
 	}
 	function show() {
 		if (disabled) return;
@@ -133,13 +135,18 @@ export function Dropdown({
 		return () => window.clearTimeout(timer);
 	}, [open, mounted]);
 	useEffect(() => {
-		if (open && searchable) search.current?.focus();
-	}, [open, searchable]);
+		if (disabled && open) dismiss();
+		if (open && searchable) search.current?.focus({ preventScroll: true });
+	}, [open, searchable, disabled]);
 	useEffect(() => {
-		if (open)
-			list.current
-				?.querySelector<HTMLElement>(`[data-index="${active}"]`)
-				?.scrollIntoView?.({ block: 'nearest' });
+		if (!open) return;
+		const container = list.current;
+		const option = container?.querySelector<HTMLElement>(`[data-index="${active}"]`);
+		if (!container || !option) return;
+		const box = container.getBoundingClientRect(),
+			target = option.getBoundingClientRect();
+		if (target.top < box.top) container.scrollTop += target.top - box.top;
+		else if (target.bottom > box.bottom) container.scrollTop += target.bottom - box.bottom;
 	}, [active, open, query]);
 	const popover = useRef<HTMLDivElement>(null);
 	const [placement, setPlacement] = useState({
@@ -155,19 +162,27 @@ export function Dropdown({
 			const anchor = trigger.current?.getBoundingClientRect();
 			if (!anchor) return;
 			const width = Math.min(Math.max(anchor.width, 200), 320, window.innerWidth - 16);
-			const height = popover.current?.getBoundingClientRect().height || 300;
+			const height = Math.min(popover.current?.scrollHeight || 300, 340);
 			const bottom = window.innerHeight - anchor.bottom - 14;
 			const above = anchor.top - 14;
 			const flip = bottom < Math.min(height, 200) && above > bottom;
 			const direction = getComputedStyle(root.current!).direction === 'rtl' ? 'rtl' : 'ltr';
+			const maxHeight = Math.max(50, Math.min(340, flip ? above : bottom));
+			const menuHeight = Math.min(height, maxHeight);
 			setPlacement({
 				left: Math.max(
 					8,
 					Math.min(direction === 'rtl' ? anchor.right - width : anchor.left, window.innerWidth - width - 8),
 				),
-				top: flip ? Math.max(8, anchor.top - height - 6) : anchor.bottom + 6,
+				top: Math.max(
+					8,
+					Math.min(
+						flip ? anchor.top - menuHeight - 6 : anchor.bottom + 6,
+						window.innerHeight - menuHeight - 8,
+					),
+				),
 				width,
-				maxHeight: Math.max(50, flip ? above : bottom),
+				maxHeight,
 				direction,
 			});
 		}
@@ -178,7 +193,7 @@ export function Dropdown({
 			window.removeEventListener('resize', place);
 			window.removeEventListener('scroll', place, true);
 		};
-	}, [open, query]);
+	}, [open, query, host]);
 	const activeOption = filtered[active];
 	const showingPlaceholder = !selected && !value;
 	return (
@@ -301,9 +316,8 @@ export function Dropdown({
 							)}
 						</div>
 					</div>,
-					document.body,
+					host,
 				)}
 		</div>
 	);
 }
-

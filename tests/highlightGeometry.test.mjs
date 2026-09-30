@@ -52,3 +52,24 @@ test('clips to page and keeps disjoint bidi rectangles; rejects empty geometry',
 	assert.deepEqual(normalizeClientRects([client], { ...client, width: 0 }, geometry), []);
 });
 
+test('deduplicates and joins overlapping same-line fragments without filling bidi or column gaps', () => {
+	const geometry = { box: [0, 0, 100, 100], transform: [1, 0, 0, -1, 0, 100], width: 100, height: 100 };
+	const client = { left: 0, top: 0, width: 100, height: 100 };
+	const rects = normalizeClientRects(
+		[
+			{ left: 5, top: 10, width: 20, height: 8 },
+			{ left: 5, top: 10, width: 20, height: 8 },
+			{ left: 20, top: 10, width: 15, height: 8 },
+			{ left: 60, top: 10, width: 20, height: 8 },
+			{ left: 5, top: 22, width: 30, height: 8 },
+			{ left: NaN, top: 10, width: 20, height: 8 },
+		],
+		client,
+		geometry,
+	);
+	assert.equal(rects.length, 3);
+	const projected = rects.map(rect => projectRect(rect, geometry));
+	assert.ok(Math.abs(projected[0][2] - 0.3) < 1e-12);
+	assert.ok(Math.abs(projected[1][0] - 0.6) < 1e-12);
+	assert.ok(Math.abs(projected[2][1] - 0.22) < 1e-12);
+});

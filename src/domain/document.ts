@@ -3,6 +3,8 @@ export interface ReaderView {
 	page: number;
 	offset: number;
 	zoom: number;
+	/** Automatic fit is optional so existing saved views remain compatible. */
+	fit?: 'manual' | 'width' | 'page';
 }
 
 export interface StoredDocument {
@@ -28,6 +30,6 @@ export function normalizeView(view: Partial<ReaderView>, pageCount = 0): ReaderV
 		page: pageCount > 0 ? Math.min(page, pageCount) : page,
 		offset: Number.isFinite(view.offset) ? Math.max(0, Math.min(1, view.offset!)) : 0,
 		zoom: Number.isFinite(view.zoom) ? Math.max(0.5, Math.min(2, view.zoom!)) : 1,
+		...(['manual', 'width', 'page'].includes(view.fit ?? '') ? { fit: view.fit } : {}),
 	};
 }
-

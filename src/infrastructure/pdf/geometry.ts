@@ -24,6 +24,45 @@ const corners = ([x, y, w, h]: NormalizedRect) => [
 	[x, y + h],
 	[x + w, y + h],
 ];
+/** Merge only overlapping/touching fragments on the same visual line, before PDF rotation. */
+function cleanClientRects(rects: Iterable<ClientBox>, client: ClientBox): ClientBox[] {
+	const lines: ClientBox[] = [];
+	for (const rect of rects) {
+		if (![rect.left, rect.top, rect.width, rect.height].every(Number.isFinite)) continue;
+		const left = Math.max(client.left, rect.left),
+			top = Math.max(client.top, rect.top);
+		const right = Math.min(client.left + client.width, rect.left + rect.width);
+		const bottom = Math.min(client.top + client.height, rect.top + rect.height);
+		if (right <= left || bottom <= top) continue;
+		let merged: ClientBox = { left, top, width: right - left, height: bottom - top };
+		for (let index = 0; index < lines.length; ) {
+			const other = lines[index];
+			const tolerance = Math.min(1, Math.min(merged.height, other.height) * 0.08);
+			const sameLine =
+				Math.abs(merged.top - other.top) <= tolerance &&
+				Math.abs(merged.top + merged.height - other.top - other.height) <= tolerance;
+			const touching =
+				merged.left <= other.left + other.width + tolerance &&
+				other.left <= merged.left + merged.width + tolerance;
+			if (!sameLine || !touching) {
+				index++;
+				continue;
+			}
+			const x = Math.min(merged.left, other.left),
+				y = Math.min(merged.top, other.top);
+			merged = {
+				left: x,
+				top: y,
+				width: Math.max(merged.left + merged.width, other.left + other.width) - x,
+				height: Math.max(merged.top + merged.height, other.top + other.height) - y,
+			};
+			lines.splice(index, 1);
+			index = 0;
+		}
+		lines.push(merged);
+	}
+	return lines;
+}
 export function normalizeClientRects(
 	rects: Iterable<ClientBox>,
 	client: ClientBox,
@@ -33,7 +72,7 @@ export function normalizeClientRects(
 		det = a * d - b * c;
 	const [x0, y0, x1, y1] = geometry.box;
 	if (!det || client.width <= 0 || client.height <= 0 || x1 <= x0 || y1 <= y0) return [];
-	return Array.from(rects).flatMap(rect => {
+	return cleanClientRects(rects, client).flatMap(rect => {
 		const left = Math.max(client.left, rect.left),
 			top = Math.max(client.top, rect.top);
 		const right = Math.min(client.left + client.width, rect.left + rect.width);
@@ -64,4 +103,3 @@ export function projectRect(rect: NormalizedRect, geometry: PageGeometry): Norma
 		}),
 	);
 }
-

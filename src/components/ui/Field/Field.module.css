@@ -1,0 +1,53 @@
+.field {
+	appearance: none;
+	width: 100%;
+	min-width: 0;
+	min-height: 36px;
+	padding: 8px 11px;
+	border: 1px solid var(--ui-border-strong);
+	border-radius: var(--ui-radius-sm);
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	font: inherit;
+	font-size: 12.5px;
+	line-height: 1.6;
+	transition:
+		border-color var(--ui-duration) var(--ui-ease),
+		box-shadow var(--ui-duration) var(--ui-ease);
+}
+.field:hover:not(:disabled) {
+	border-color: var(--ui-muted);
+}
+.field:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 1px;
+	box-shadow: 0 0 0 3px var(--ui-ring-soft);
+}
+.field:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+.field::placeholder {
+	color: var(--ui-muted);
+	opacity: 1;
+}
+.field[aria-invalid='true'] {
+	border-color: var(--ui-danger);
+}
+.field[type='number'] {
+	appearance: textfield;
+}
+.field::-webkit-inner-spin-button,
+.field::-webkit-outer-spin-button {
+	appearance: none;
+	margin: 0;
+}
+.field::-webkit-search-cancel-button,
+.field::-webkit-search-decoration {
+	appearance: none;
+}
+.textarea {
+	min-height: 88px;
+	max-height: min(280px, 40dvh);
+	resize: vertical;
+}
