@@ -1,0 +1,134 @@
+/* PdfViewport — inline reader bar + independent PDF scroll viewport. */
+.document {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+.scroll {
+	flex: 1;
+	min-height: 0;
+	background: var(--pdf-canvas);
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+.scroll.snipping {
+	cursor: crosshair;
+}
+.virtualPages {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	position: relative;
+}
+.virtualPage {
+	position: absolute;
+	inset-inline: 0;
+	top: 0;
+	display: flex;
+	justify-content: center;
+}
+.pageContent {
+	margin: 0 auto;
+}
+.pageLabel {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	color: var(--ui-faint);
+	margin: 0 0 8px 2px;
+}
+.annotatedPage {
+	position: relative;
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: var(--pdf-page-shadow);
+	overflow: hidden;
+}
+:root[data-theme='dark'] .annotatedPage {
+	background: #f4f1ea;
+}
+.annotatedPage :global(.react-pdf__Page) {
+	background: transparent !important;
+}
+.annotatedPage :global(canvas) {
+	display: block;
+	width: 100% !important;
+	height: auto !important;
+}
+.pageLoading {
+	display: grid;
+	place-items: center;
+	color: var(--ui-muted);
+	font-size: 12px;
+	background: var(--ui-surface-raised);
+}
+.inlineError {
+	color: var(--ui-danger);
+	font-size: 12px;
+	margin: 8px 12px;
+}
+/* Local highlight notes live above the scroll viewport. */
+.localNotes {
+	flex: none;
+	margin: 0;
+	padding: 8px 14px;
+	background: var(--ui-surface);
+	border-bottom: 1px solid var(--ui-border-soft);
+	font-size: 12px;
+	max-height: 190px;
+	overflow: auto;
+}
+.localNotes summary {
+	cursor: pointer;
+	font-weight: 650;
+}
+.localNotes article {
+	padding: 8px 0;
+	border-top: 1px solid var(--ui-border-soft);
+}
+.localNotes input {
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-xs);
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	padding: 7px 9px;
+	outline: none;
+	font: inherit;
+}
+.localNotes input:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 1px;
+}
+
+.localNotes {
+	position: absolute;
+	top: calc(var(--header-height) + 12px);
+	right: 12px;
+	z-index: 6;
+	max-width: min(340px, 90%);
+	border: 1px solid var(--ui-border);
+	border-radius: 10px;
+	box-shadow: var(--ui-shadow);
+}
+.localNotes form {
+	display: flex;
+	gap: 6px;
+	margin-top: 8px;
+}
+.localNotes input {
+	min-width: 0;
+	flex: 1;
+}
+.localNotes article > div {
+	display: inline-block;
+	min-width: 105px;
+	margin-inline-end: 6px;
+}
+.localNotes article p {
+	white-space: pre-wrap;
+}
+

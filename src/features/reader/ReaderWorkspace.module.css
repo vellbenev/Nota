@@ -1,0 +1,219 @@
+/* ReaderWorkspace — 50px unified header + full-height reading pane. */
+.pane {
+	position: relative;
+	height: 100%;
+	min-height: 0;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--pdf-canvas);
+}
+.topbar {
+	height: var(--header-height);
+	min-height: var(--header-height);
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0 12px;
+	background: var(--ui-surface-raised);
+	border-bottom: 1px solid var(--ui-border-soft);
+	position: relative;
+	z-index: 7;
+}
+.brand {
+	width: 28px;
+	height: 28px;
+	flex: none;
+	display: block;
+}
+.title {
+	flex: 1 1 120px;
+	min-width: 0;
+	max-width: 230px;
+	margin: 0;
+	font-family: var(--font-latin);
+	font-size: 13.5px;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--ui-text-strong);
+}
+.library {
+	flex: 1 1 150px;
+	min-width: 72px;
+	max-width: 215px;
+}
+.controlsHost {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	min-width: 0;
+}
+.openButton {
+	flex: none;
+}
+.sessionBadge {
+	flex: none;
+	padding: 3px 8px;
+	border-radius: var(--ui-radius-pill);
+	background: #f3ead9;
+	color: #8a6534;
+	font-size: 10.5px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+:root[data-theme='dark'] .sessionBadge {
+	background: #3a3122;
+	color: #e0c48f;
+}
+.toast {
+	position: absolute;
+	top: calc(var(--header-height) + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 6;
+	max-width: min(540px, 92%);
+	padding: 7px 12px;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-raised);
+	box-shadow: var(--ui-shadow-pop);
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.toastError {
+	border-color: var(--ui-danger);
+	color: var(--ui-danger);
+}
+.emptyArea {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	overflow: auto;
+}
+.emptyCard {
+	margin: auto;
+	text-align: center;
+	padding: 28px 20px;
+	max-width: 420px;
+}
+.emptyIcon {
+	width: 52px;
+	height: 52px;
+	margin: 0 auto 12px;
+	display: grid;
+	place-items: center;
+	border-radius: 14px;
+	background: var(--ui-surface-sunken);
+	font-size: 24px;
+}
+.emptyCard h2 {
+	font-family: var(--font-latin);
+	font-size: 19px;
+	margin: 0 0 14px;
+	color: var(--ui-text-strong);
+}
+.sampleRow {
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+	margin-top: 16px;
+	flex-wrap: wrap;
+}
+.dropOverlay {
+	position: absolute;
+	inset: 8px;
+	z-index: 20;
+	display: grid;
+	place-items: center;
+	border: 1.5px dashed var(--ui-accent);
+	border-radius: var(--ui-radius-lg);
+	background: color-mix(in srgb, var(--ui-accent-soft) 82%, transparent);
+	backdrop-filter: blur(2px);
+	font-size: 13px;
+	font-weight: 650;
+}
+.pane.isDragging .dropOverlay,
+.isDragging .dropOverlay {
+	display: grid;
+}
+@media (max-width: 1050px) {
+	.title {
+		display: none;
+	}
+	.library {
+		max-width: none;
+	}
+}
+@media (max-width: 900px) {
+	.brand {
+		display: none;
+	}
+	.topbar {
+		gap: 8px;
+		padding: 0 10px;
+	}
+}
+
+.emptyArea {
+	background: radial-gradient(ellipse at 50% 40%, var(--ui-surface-raised), transparent 65%);
+}
+.emptyCard {
+	max-width: 470px;
+}
+.emptyCard h2 {
+	font-size: clamp(24px, 2.5vw, 34px);
+	font-weight: 650;
+	letter-spacing: -0.045em;
+	margin-bottom: 12px;
+}
+.emptyCard p {
+	color: var(--ui-muted);
+	line-height: 1.75;
+	max-width: 310px;
+	margin: 0 auto 24px;
+}
+.emptyIcon {
+	width: 68px;
+	height: 78px;
+	background: var(--ui-surface-raised);
+	border: 1px solid var(--ui-border);
+	box-shadow: var(--ui-shadow);
+	border-radius: 12px;
+	margin-bottom: 26px;
+	color: var(--ui-accent);
+	transform: rotate(-6deg);
+}
+.emptyIcon svg {
+	width: 32px;
+	height: 32px;
+}
+.toast {
+	white-space: normal;
+	border-radius: 10px;
+}
+@media (max-width: 1250px) {
+	.title {
+		display: none;
+	}
+}
+@media (max-width: 600px) {
+	.openButton {
+		padding-inline: 6px;
+		font-size: 11px;
+	}
+	.topbar {
+		gap: 4px;
+		padding-inline: 6px;
+	}
+	.sessionBadge {
+		display: none;
+	}
+}
+

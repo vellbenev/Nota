@@ -1,0 +1,70 @@
+/* SegmentedControl — pill slider for zoom / mode switches. */
+.root {
+	position: relative;
+	display: inline-flex;
+	max-width: 100%;
+	width: 100%;
+	gap: 2px;
+	padding: 3px;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-sunken);
+	direction: inherit;
+	box-shadow: inset 0 1px 2px #1c2a1c0d;
+}
+.thumb {
+	position: absolute;
+	top: 3px;
+	bottom: 3px;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-raised);
+	box-shadow:
+		0 1px 4px #20302026,
+		0 0 0 1px #1c2a1c0d;
+	transition:
+		inset-inline-start var(--ui-duration-slow) var(--ui-ease),
+		width var(--ui-duration-slow) var(--ui-ease);
+	pointer-events: none;
+}
+.segment {
+	position: relative;
+	z-index: 1;
+	min-width: 0;
+	flex: 1;
+	padding: 6px 9px;
+	border: 0;
+	border-radius: var(--ui-radius-pill);
+	background: transparent;
+	color: var(--ui-muted);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		color var(--ui-duration) var(--ui-ease),
+		background var(--ui-duration) var(--ui-ease);
+}
+.segment:hover:not(:disabled) {
+	color: var(--ui-text);
+}
+.segment.selected {
+	color: var(--ui-text-strong);
+	background: transparent;
+}
+.segment:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 2px;
+}
+.segment:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+	.segment,
+	.thumb {
+		transition: none;
+	}
+}
+

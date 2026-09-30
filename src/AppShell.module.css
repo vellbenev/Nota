@@ -1,0 +1,58 @@
+/* AppShell — full-height split pane: 69% PDF viewport / 31% assistant, one divider. */
+.shell {
+	height: 100dvh;
+	min-height: 0;
+	overflow: hidden;
+}
+.split {
+	height: 100dvh;
+	min-height: 0;
+	overflow: hidden;
+	display: grid;
+	grid-template-columns: minmax(0, var(--pdf-share, 69%)) 6px minmax(0, 1fr);
+}
+.divider {
+	min-width: 6px;
+	touch-action: none;
+	cursor: col-resize;
+	background: transparent;
+	border: 0;
+	padding: 0;
+	position: relative;
+}
+.divider::after {
+	content: '';
+	position: absolute;
+	inset: 0 2px;
+	border-radius: 3px;
+	background: transparent;
+	transition: background var(--ui-duration) var(--ui-ease);
+}
+.divider:hover::after,
+.divider:focus-visible::after,
+.divider.active::after {
+	background: var(--ui-border-strong);
+}
+.divider:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: -2px;
+}
+@media (max-width: 1100px) {
+	.split {
+		grid-template-columns: minmax(0, 1fr) 6px 310px;
+	}
+	.divider {
+		pointer-events: none;
+		visibility: hidden;
+	}
+}
+@media (max-width: 760px) {
+	.split {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: minmax(0, 62fr) minmax(0, 38fr);
+	}
+	.divider {
+		display: none;
+	}
+}
+

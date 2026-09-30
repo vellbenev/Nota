@@ -1,0 +1,152 @@
+/* Global foundation only. Component appearance belongs to CSS Modules. */
+:root {
+	font-family: var(--font-latin), var(--font-persian);
+	color: var(--ui-text);
+	background: var(--ui-surface);
+	font-synthesis: none;
+	color-scheme: light;
+}
+:root[data-theme='dark'] {
+	color-scheme: dark;
+}
+* {
+	box-sizing: border-box;
+}
+html,
+body,
+#root {
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+}
+body {
+	margin: 0;
+	font-size: 13px;
+	-webkit-font-smoothing: antialiased;
+}
+button,
+input,
+textarea,
+select {
+	font: inherit;
+}
+button,
+summary {
+	-webkit-tap-highlight-color: transparent;
+}
+button {
+	cursor: pointer;
+}
+button:disabled {
+	cursor: not-allowed;
+}
+:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 3px;
+}
+bdi {
+	unicode-bidi: isolate;
+}
+[lang='fa'],
+textarea[dir='auto'],
+blockquote[dir='auto'] {
+	font-family: var(--font-persian);
+}
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+}
+/* PDF integration contracts: preserve page offsets, canvas size and overlay geometry. */
+.pdf-document > .react-pdf__Document {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+.pdf-scroll {
+	overflow-anchor: none;
+	position: relative;
+	scroll-behavior: auto;
+}
+.virtual-page {
+	overflow: hidden;
+}
+.page-content {
+	flex-shrink: 0;
+}
+.page-content .page-label {
+	height: 24px;
+	line-height: 24px;
+	margin: 0;
+}
+.page-content canvas {
+	display: block;
+	max-width: none;
+}
+.highlight-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	pointer-events: none;
+}
+.highlight-mark {
+	position: absolute;
+	opacity: 0.32;
+	mix-blend-mode: multiply;
+}
+.highlight-mark.yellow {
+	background: #f2cd22;
+}
+.highlight-mark.green {
+	background: #5dcd87;
+}
+.highlight-mark.blue {
+	background: #63a6f4;
+}
+.snipping .react-pdf__Page__textContent {
+	user-select: none;
+	pointer-events: none;
+}
+.snipping .react-pdf__Page__annotations {
+	pointer-events: none;
+}
+.snip-overlay {
+	touch-action: none;
+	user-select: none;
+	overflow: hidden;
+}
+.snip-preview {
+	display: block;
+	max-width: 100%;
+	max-height: 250px;
+	object-fit: contain;
+	margin: 8px auto;
+}
+.rive-mascot {
+	position: absolute;
+	inset: 0;
+}
+.reader-message,
+.reader-error {
+	padding: 20px;
+	color: var(--ui-muted);
+}
+.reader-error {
+	color: var(--ui-danger);
+}
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation: none !important;
+		transition: none !important;
+		scroll-behavior: auto !important;
+	}
+}
+

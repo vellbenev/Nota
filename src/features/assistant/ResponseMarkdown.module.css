@@ -1,0 +1,121 @@
+/* ResponseMarkdown — Persian-first reading rhythm, strict LTR islands. */
+.body {
+	font-size: 13px;
+	line-height: 1.75;
+	overflow-wrap: anywhere;
+	min-width: 0;
+}
+.body[dir='rtl'] {
+	text-align: right;
+	font-family: var(--font-persian);
+}
+.body[dir='ltr'] {
+	text-align: left;
+	font-family: var(--font-latin);
+}
+.body[dir='rtl'] p,
+.body[dir='rtl'] li {
+	line-height: 1.75;
+}
+.body p {
+	margin: 0 0 10px;
+}
+.body p:last-child {
+	margin-bottom: 0;
+}
+.body ul,
+.body ol {
+	margin: 0 0 10px;
+	padding-inline-start: 20px;
+}
+.body li {
+	margin-bottom: 4px;
+}
+.body h1,
+.body h2,
+.body h3 {
+	font-size: 13.5px;
+	font-weight: 700;
+	margin: 12px 0 6px;
+	color: var(--ui-text-strong);
+}
+.body table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin: 10px 0;
+}
+.body th,
+.body td {
+	border: 1px solid var(--ui-border);
+	padding: 6px 8px;
+	text-align: start;
+}
+.body th {
+	background: var(--ui-surface-sunken);
+	font-weight: 700;
+}
+.body code {
+	direction: ltr;
+	unicode-bidi: isolate;
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	background: var(--ui-surface-sunken);
+	border-radius: 5px;
+	padding: 1px 5px;
+}
+.body pre {
+	direction: ltr;
+	text-align: left;
+	background: var(--ui-surface-sunken);
+	border: 1px solid var(--ui-border-soft);
+	border-radius: var(--ui-radius-sm);
+	padding: 10px 12px;
+	overflow: auto;
+	max-width: 100%;
+}
+.body pre code {
+	background: transparent;
+	padding: 0;
+}
+.body blockquote {
+	margin: 0 0 10px;
+	padding: 8px 12px;
+	border-inline-start: 2px solid var(--ui-border-strong);
+	color: var(--ui-muted);
+}
+.body a {
+	color: var(--ui-accent);
+}
+/* KaTeX output is always an LTR island, even inside RTL prose. */
+.body :global(.katex-display) {
+	direction: ltr;
+	text-align: center;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 4px 0;
+}
+.body :global(.katex) {
+	direction: ltr;
+	unicode-bidi: isolate;
+	font-size: 1.02em;
+}
+
+.body table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+}
+.body pre,
+.body :global(.katex-display) {
+	unicode-bidi: isolate;
+}
+.body :global(.katex) {
+	display: inline-block;
+	text-align: left;
+}
+.body blockquote[dir='auto'] {
+	text-align: start;
+	unicode-bidi: isolate;
+}
+

@@ -1,0 +1,50 @@
+/* ScrollArea — subtle slim macOS-style custom scrollbars. */
+.root {
+	overflow: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--ui-border-strong) transparent;
+	scrollbar-gutter: stable;
+	overscroll-behavior: contain;
+}
+.root::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+.root::-webkit-scrollbar-track {
+	background: transparent;
+}
+.root::-webkit-scrollbar-thumb {
+	background: var(--ui-border-strong);
+	border-radius: 999px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+	min-height: 28px;
+}
+.root::-webkit-scrollbar-thumb:hover {
+	background: var(--ui-muted);
+	background-clip: padding-box;
+	border: 2px solid transparent;
+}
+.root::-webkit-scrollbar-thumb:active {
+	background: var(--ui-faint);
+	background-clip: padding-box;
+}
+.root::-webkit-scrollbar-corner {
+	background: transparent;
+}
+/* Overlay-feel on coarse pointers: keep layout stable, fade thumb until hover. */
+@media (pointer: coarse) {
+	.root {
+		scrollbar-width: none;
+	}
+	.root::-webkit-scrollbar {
+		width: 0;
+		height: 0;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.root {
+		scroll-behavior: auto;
+	}
+}
+

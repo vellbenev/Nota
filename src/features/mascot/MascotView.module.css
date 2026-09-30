@@ -1,0 +1,107 @@
+/* MascotView — polished companion avatar integrated in the sidebar header. */
+.view {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+.art {
+	position: relative;
+	width: 96px;
+	height: 96px;
+	flex: none;
+	background: transparent;
+	display: grid;
+	place-items: center;
+	overflow: visible;
+	transition:
+		box-shadow var(--ui-duration) var(--ui-ease),
+		transform var(--ui-duration) var(--ui-ease);
+}
+.mascot {
+	width: 80px;
+	height: 80px;
+	overflow: visible;
+}
+.rive {
+	position: absolute;
+	inset: 0;
+}
+.bodyArt {
+	transform-origin: 48px 80px;
+	transition: transform 0.25s ease;
+}
+.mood-idle .bodyArt {
+	animation: breathe 4s ease-in-out infinite;
+}
+.mood-pondering .bodyArt {
+	animation: think 1.6s ease-in-out infinite;
+}
+.mood-pondering .spark {
+	animation: glow 1s ease-in-out infinite;
+}
+.mood-explaining .bodyArt {
+	animation: talk 0.9s ease-in-out infinite;
+}
+.mood-error .bodyArt {
+	transform: rotate(-6deg);
+}
+@keyframes breathe {
+	50% {
+		transform: translateY(-2px);
+	}
+}
+@keyframes think {
+	50% {
+		transform: rotate(6deg);
+	}
+}
+@keyframes talk {
+	50% {
+		transform: translateY(-3px) rotate(-2deg);
+	}
+}
+@keyframes glow {
+	50% {
+		opacity: 0.35;
+	}
+}
+.meta {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	line-height: 1.25;
+}
+.state {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: var(--ui-text-strong);
+	white-space: nowrap;
+}
+.sub {
+	font-size: 10px;
+	color: var(--ui-muted);
+	white-space: nowrap;
+}
+.mood-error .state {
+	color: var(--ui-danger);
+}
+.reducedMotion .bodyArt,
+.reducedMotion .spark {
+	animation: none !important;
+	transition: none;
+}
+.reducedMotion .art {
+	transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.bodyArt,
+	.spark {
+		animation: none !important;
+		transition: none;
+	}
+	.art {
+		transition: none;
+	}
+}
+

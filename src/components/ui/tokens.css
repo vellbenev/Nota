@@ -1,0 +1,105 @@
+/* ── Nota design tokens · Linear / Raycast / Notion inspired academic workspace ── */
+:root {
+	--header-height: 50px;
+	--reader-bar-height: 50px;
+	--assistant-width: 31%;
+	--split-min-pdf: 62%;
+	--split-max-pdf: 78%;
+
+	--font-latin:
+		'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Vazirmatn Variable', Roboto, Arial, sans-serif;
+	--font-persian: 'Vazirmatn Variable', 'Vazirmatn', var(--font-latin);
+	--font-display: var(--font-latin);
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+	--ui-surface: #f8f9fa;
+	--ui-surface-raised: #ffffff;
+	--ui-surface-hover: #f0f2f4;
+	--ui-surface-active: #e6ebe8;
+	--ui-surface-sunken: #eef1f3;
+	--ui-text: #30363c;
+	--ui-text-strong: #20252b;
+	--ui-muted: #68737d;
+	--ui-faint: #87929b;
+	--ui-border: #dfe4e8;
+	--ui-border-soft: #e9edf0;
+	--ui-border-strong: #cdd5da;
+	--ui-accent: #477868;
+	--ui-accent-hover: #396655;
+	--ui-accent-soft: #e8f1ec;
+	--ui-accent-text: #ffffff;
+	--ui-danger: #a4483f;
+	--ui-danger-soft: #fbeeea;
+	--ui-ring: #7aa76d;
+	--ui-shadow-xs: 0 1px 2px #1c2a1c10;
+	--ui-shadow: 0 12px 32px #1c2a1c1f;
+	--ui-shadow-pop: 0 8px 28px #1c2a1c26, 0 1px 3px #1c2a1c14;
+	--ui-radius-xs: 6px;
+	--ui-radius-sm: 8px;
+	--ui-radius-md: 12px;
+	--ui-radius-lg: 16px;
+	--ui-radius-pill: 999px;
+	--ui-duration: 160ms;
+	--ui-duration-slow: 240ms;
+	--ui-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+	--pdf-canvas: #e9edef;
+	--pdf-page-shadow: 0 1px 2px #1c2a1c14, 0 8px 28px #1c2a1c14;
+}
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--ui-surface: #1b1f24;
+	--ui-surface-raised: #30363c;
+	--ui-surface-hover: #2d343c;
+	--ui-surface-active: #35413f;
+	--ui-surface-sunken: #20252b;
+	--ui-text: #eaf0e8;
+	--ui-text-strong: #ffffff;
+	--ui-muted: #a9b8a6;
+	--ui-faint: #7f8d7d;
+	--ui-border: #343e46;
+	--ui-border-soft: #293139;
+	--ui-border-strong: #46545e;
+	--ui-accent: #93bd88;
+	--ui-accent-hover: #a5cb9b;
+	--ui-accent-soft: #2c3a2c;
+	--ui-accent-text: #152115;
+	--ui-danger: #ee9d93;
+	--ui-danger-soft: #3a2624;
+	--ui-ring: #a5d297;
+	--ui-shadow-xs: 0 1px 2px #0008;
+	--ui-shadow: 0 12px 32px #000a;
+	--ui-shadow-pop: 0 12px 36px #000c, 0 1px 3px #000a;
+	--pdf-canvas: #20252b;
+	--pdf-page-shadow: 0 1px 2px #000a, 0 10px 32px #000a;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		color-scheme: dark;
+		--ui-surface: #1b1f24;
+		--ui-surface-raised: #30363c;
+		--ui-surface-hover: #2d343c;
+		--ui-surface-active: #35413f;
+		--ui-surface-sunken: #20252b;
+		--ui-text: #eaf0e8;
+		--ui-text-strong: #ffffff;
+		--ui-muted: #a9b8a6;
+		--ui-faint: #7f8d7d;
+		--ui-border: #343e46;
+		--ui-border-soft: #293139;
+		--ui-border-strong: #46545e;
+		--ui-accent: #93bd88;
+		--ui-accent-hover: #a5cb9b;
+		--ui-accent-soft: #2c3a2c;
+		--ui-accent-text: #152115;
+		--ui-danger: #ee9d93;
+		--ui-danger-soft: #3a2624;
+		--ui-ring: #a5d297;
+		--ui-shadow-xs: 0 1px 2px #0008;
+		--ui-shadow: 0 12px 32px #000a;
+		--ui-shadow-pop: 0 12px 36px #000c, 0 1px 3px #000a;
+		--pdf-canvas: #20252b;
+		--pdf-page-shadow: 0 1px 2px #000a, 0 10px 32px #000a;
+	}
+}
+

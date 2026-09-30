@@ -1,0 +1,224 @@
+/* Dropdown — Raycast-style command popover replacing native <select>. */
+.root {
+	position: relative;
+	min-width: 0;
+	flex-shrink: 1;
+	direction: inherit;
+}
+.trigger {
+	width: 100%;
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-width: 0;
+	padding: 0 8px 0 10px;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-sm);
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	text-align: start;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 550;
+	cursor: pointer;
+	box-shadow: var(--ui-shadow-xs);
+	transition:
+		border-color var(--ui-duration) var(--ui-ease),
+		background var(--ui-duration) var(--ui-ease),
+		box-shadow var(--ui-duration) var(--ui-ease);
+}
+.trigger:hover {
+	background: var(--ui-surface-hover);
+	border-color: var(--ui-border-strong);
+}
+.trigger:focus-visible,
+.search:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 2px;
+}
+.trigger:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	box-shadow: none;
+}
+.triggerLabel {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+.triggerPlaceholder {
+	color: var(--ui-faint);
+	font-weight: 450;
+}
+
+/* Chevron: smooth rotation on open, bidi-safe */
+.chevron {
+	flex: none;
+	display: inline-grid;
+	place-items: center;
+	width: 14px;
+	height: 14px;
+	color: var(--ui-faint);
+	font-size: 13px;
+	line-height: 1;
+	transition:
+		transform var(--ui-duration) var(--ui-ease),
+		color var(--ui-duration);
+}
+.chevron svg {
+	width: 12px;
+	height: 12px;
+	display: block;
+}
+.trigger:hover .chevron {
+	color: var(--ui-muted);
+}
+.trigger[aria-expanded='true'] .chevron {
+	transform: rotate(180deg);
+	color: var(--ui-muted);
+}
+
+.popover {
+	position: fixed;
+	display: flex;
+	flex-direction: column;
+	z-index: 200;
+	width: max(100%, 200px);
+	max-width: min(320px, 90vw);
+	padding: 5px;
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-md);
+	box-shadow: var(--ui-shadow-pop);
+	animation: appear var(--ui-duration) var(--ui-ease);
+	transform-origin: top center;
+}
+.popover.closing {
+	pointer-events: none;
+	animation: disappear var(--ui-duration) ease-in forwards;
+}
+.search {
+	width: 100%;
+	height: 32px;
+	margin-bottom: 5px;
+	padding: 0 9px;
+	background: var(--ui-surface-sunken);
+	color: var(--ui-text);
+	border: 1px solid var(--ui-border-soft);
+	border-radius: var(--ui-radius-xs);
+	font: inherit;
+	font-size: 12px;
+}
+.search::placeholder {
+	color: var(--ui-faint);
+}
+.list {
+	max-height: 248px;
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
+	scrollbar-color: var(--ui-border-strong) transparent;
+	padding: 1px;
+}
+.option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 33px;
+	padding: 6px 8px;
+	border-radius: var(--ui-radius-xs);
+	font-size: 12.5px;
+	font-weight: 500;
+	cursor: pointer;
+	text-align: start;
+	transition: background 110ms var(--ui-ease);
+}
+.option.active {
+	background: var(--ui-surface-hover);
+}
+.option[aria-selected='true'] {
+	color: var(--ui-text);
+	font-weight: 650;
+}
+.option[aria-selected='true'] .itemLabel {
+	font-weight: 650;
+}
+.option.disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.itemIcon {
+	display: inline-flex;
+	flex: none;
+	color: var(--ui-muted);
+	font-size: 13px;
+}
+.itemLabel {
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.check {
+	flex: none;
+	width: 15px;
+	text-align: center;
+	color: var(--ui-accent);
+	font-size: 12px;
+	font-weight: 800;
+}
+.badge {
+	flex: none;
+	padding: 2px 6px;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-active);
+	color: var(--ui-muted);
+	font-size: 10px;
+	font-weight: 650;
+	letter-spacing: 0.02em;
+}
+.empty {
+	padding: 10px;
+	color: var(--ui-muted);
+	font-size: 11.5px;
+}
+
+@keyframes appear {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(0.99);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+@keyframes disappear {
+	to {
+		opacity: 0;
+		transform: translateY(-4px) scale(0.99);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.popover {
+		animation: none;
+	}
+	.chevron,
+	.trigger,
+	.option {
+		transition: none;
+	}
+}
+
+.list {
+	min-height: 0;
+}
+.search {
+	flex-shrink: 0;
+}
+

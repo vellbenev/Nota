@@ -1,0 +1,322 @@
+/* AssistantPanel — companion sidebar with bidi-safe reading column. */
+.pane {
+	height: 100%;
+	min-height: 0;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--ui-surface);
+	border-inline-start: 1px solid var(--ui-border-soft);
+}
+.heading {
+	flex: none;
+	height: auto;
+	min-height: 108px;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	padding: 6px 14px;
+	background: var(--ui-surface-raised);
+	border-bottom: 1px solid var(--ui-border-soft);
+}
+.title {
+	margin: 0;
+	font-family: var(--font-display);
+	font-size: 13.5px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	color: var(--ui-text-strong);
+	white-space: nowrap;
+}
+.modelTag {
+	margin-inline-start: auto;
+	flex: none;
+	padding: 3px 8px;
+	border-radius: var(--ui-radius-pill);
+	background: var(--ui-surface-sunken);
+	color: var(--ui-muted);
+	font-size: 10.5px;
+	font-weight: 650;
+	max-width: 170px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.modelTag.cloud {
+	background: var(--ui-accent-soft);
+	color: var(--ui-accent);
+}
+:root[data-theme='dark'] .modelTag.cloud {
+	color: var(--ui-accent);
+}
+.content {
+	flex: 1;
+	min-height: 0;
+	padding: 14px;
+}
+.stack {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: 0;
+}
+.card {
+	background: var(--ui-surface-raised);
+	border: 1px solid var(--ui-border-soft);
+	border-radius: var(--ui-radius-md);
+	box-shadow: var(--ui-shadow-xs);
+	padding: 12px;
+}
+.cardTitle {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--ui-muted);
+	margin-bottom: 8px;
+}
+.hint {
+	border: 1px dashed var(--ui-border-strong);
+	border-radius: var(--ui-radius-md);
+	padding: 18px 14px;
+	text-align: center;
+	color: var(--ui-muted);
+	font-size: 12.5px;
+	background: transparent;
+}
+.quote {
+	margin: 0 0 10px;
+	padding: 10px 12px;
+	border-inline-start: 2px solid var(--ui-accent);
+	border-radius: 0 var(--ui-radius-xs) var(--ui-radius-xs) 0;
+	background: var(--ui-surface-sunken);
+	font-size: 12.5px;
+	line-height: 1.75;
+	overflow-wrap: anywhere;
+}
+.sendButton {
+	width: 100%;
+	justify-content: space-between;
+	margin-top: 10px;
+}
+.textButton {
+	align-self: flex-start;
+	padding-inline: 4px;
+}
+.errorText {
+	color: var(--ui-danger);
+	font-size: 12px;
+	line-height: 1.6;
+}
+.fieldLabel {
+	display: block;
+	color: var(--ui-muted);
+	font-size: 11px;
+	font-weight: 700;
+	margin: 10px 0 6px;
+}
+.textarea,
+.textInput {
+	width: 100%;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-sm);
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	padding: 9px 11px;
+	outline: none;
+	font: inherit;
+	font-size: 12.5px;
+	line-height: 1.7;
+}
+.textarea {
+	min-height: 84px;
+	resize: vertical;
+}
+.textarea:focus-visible,
+.textInput:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 1px;
+	border-color: var(--ui-ring);
+}
+.modelRow {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+.modelRow > div:first-child {
+	flex: 1;
+	min-width: 0;
+}
+.meta {
+	font-size: 11.5px;
+	color: var(--ui-muted);
+	line-height: 1.6;
+}
+.statusRow {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	font-size: 11.5px;
+	color: var(--ui-muted);
+}
+.statusDot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--ui-border-strong);
+	flex: none;
+}
+.statusDot.ready {
+	background: var(--ui-accent);
+	box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}
+.contextBox {
+	font-size: 11px;
+}
+.contextBox summary {
+	cursor: pointer;
+	color: var(--ui-muted);
+}
+.contextBox pre {
+	direction: ltr;
+	text-align: left;
+	max-height: 180px;
+	overflow: auto;
+	background: var(--ui-surface-sunken);
+	border-radius: var(--ui-radius-xs);
+	padding: 8px;
+	font-size: 10.5px;
+}
+
+.heading {
+	padding-inline: 16px;
+}
+.content {
+	padding: 18px 16px 28px;
+}
+.stack {
+	gap: 18px;
+}
+.card {
+	box-shadow: none;
+	padding: 15px;
+}
+.card > summary {
+	cursor: pointer;
+	color: var(--ui-muted);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	list-style: none;
+	font-size: 12px;
+}
+.card > summary::-webkit-details-marker {
+	display: none;
+}
+.card > summary::before {
+	content: '›';
+	transition: transform var(--ui-duration);
+}
+.card[open] > summary::before {
+	transform: rotate(90deg);
+}
+.card > summary .statusDot {
+	margin-inline-start: auto;
+}
+.card:has(> summary) {
+	padding: 11px 12px;
+	background: transparent;
+}
+.userCard {
+	background: var(--ui-accent-soft);
+	border-color: transparent;
+	border-radius: 14px 14px 4px 14px;
+}
+.answerCard {
+	border-radius: 4px 14px 14px 14px;
+}
+.cardTitle {
+	text-transform: none;
+	letter-spacing: 0;
+	font-weight: 600;
+	flex-wrap: wrap;
+	line-height: 1.5;
+}
+.quote {
+	max-height: 200px;
+	overflow: auto;
+	white-space: pre-wrap;
+	text-align: start;
+}
+.textarea {
+	margin-top: 12px;
+	max-height: 240px;
+}
+.hint {
+	border: 0;
+	padding: 40px 12px;
+	background: transparent;
+}
+.hintIcon {
+	display: grid;
+	place-items: center;
+	width: 42px;
+	height: 42px;
+	border-radius: 13px;
+	background: var(--ui-accent-soft);
+	color: var(--ui-accent);
+	margin: 0 auto 16px;
+	font-size: 24px;
+}
+.hint h3 {
+	color: var(--ui-text);
+	font-size: 15px;
+	font-weight: 600;
+	margin: 0 0 10px;
+	letter-spacing: -0.02em;
+}
+.hint p {
+	line-height: 1.8;
+	margin: 0 auto;
+	max-width: 260px;
+}
+.hintFoot {
+	display: block;
+	font-size: 10px;
+	margin-top: 26px;
+	color: var(--ui-faint);
+}
+.contextBox {
+	margin-top: 16px;
+	padding-top: 12px;
+	border-top: 1px solid var(--ui-border-soft);
+}
+.contextBox pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	unicode-bidi: isolate;
+}
+@media (max-width: 760px) {
+	.pane {
+		border-inline-start: 0;
+		border-top: 1px solid var(--ui-border);
+	}
+	.hint {
+		padding: 16px;
+	}
+}
+
+.question {
+	margin: 8px 0 0;
+	line-height: 1.75;
+	font-family: var(--font-persian);
+	overflow-wrap: anywhere;
+	text-align: start;
+}
+

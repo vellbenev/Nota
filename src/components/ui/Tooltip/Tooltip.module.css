@@ -1,0 +1,33 @@
+.root {
+	display: inline-flex;
+	max-width: 100%;
+}
+.tip {
+	position: fixed;
+	z-index: 250;
+	width: 220px;
+	padding: 7px 10px;
+	border-radius: 7px;
+	background: #23282e;
+	color: #f8fafb;
+	box-shadow: var(--ui-shadow-pop);
+	font-size: 11px;
+	line-height: 1.5;
+	text-align: center;
+	pointer-events: none;
+	opacity: 0;
+	transform: translateY(3px);
+	transition:
+		opacity 140ms ease,
+		transform 140ms ease;
+}
+.visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+	.tip {
+		transition: none;
+	}
+}
+

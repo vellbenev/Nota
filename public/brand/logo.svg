@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Nota</title>
+  <rect width="64" height="64" rx="16" fill="#24483f"/>
+  <path d="M17 47V20a3 3 0 0 1 3-3h5l15 23V17h7v27a3 3 0 0 1-3 3h-4L24 24v23Z" fill="#f7f5eb"/>
+  <path d="M40 17h7v12l-7-5Z" fill="#a8c59a"/>
+</svg>

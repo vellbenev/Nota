@@ -1,0 +1,79 @@
+/* SnipOverlay — crop interaction floating above the PDF canvas. */
+.overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	border-radius: 4px;
+	cursor: crosshair;
+	outline: none;
+	background: #1c2a1c0d;
+}
+.overlay:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: -2px;
+}
+.hint {
+	position: absolute;
+	top: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 5px 10px;
+	border-radius: var(--ui-radius-pill);
+	background: #202820ee;
+	color: #f2f5f0;
+	font-size: 11px;
+	font-weight: 600;
+	white-space: nowrap;
+	pointer-events: none;
+}
+.box {
+	position: absolute;
+	border: 1.5px solid var(--ui-accent);
+	border-radius: 3px;
+	background: #93bd8830;
+	box-shadow: 0 0 0 1px #ffffff88;
+	pointer-events: none;
+}
+.actions {
+	position: absolute;
+	z-index: 6;
+	transform: translateY(-100%);
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 210px;
+	max-width: 280px;
+	padding: 8px;
+	background: var(--ui-surface-raised);
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-md);
+	box-shadow: var(--ui-shadow-pop);
+}
+.actions input {
+	width: 100%;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-xs);
+	background: var(--ui-surface-raised);
+	color: var(--ui-text);
+	padding: 7px 9px;
+	font: inherit;
+	font-size: 12px;
+	outline: none;
+}
+.actions input:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 1px;
+}
+.actionRow {
+	display: flex;
+	gap: 6px;
+}
+.inlineError {
+	color: var(--ui-danger);
+	font-size: 11.5px;
+	margin: 6px 8px;
+	background: var(--ui-surface-raised);
+	border-radius: 6px;
+	padding: 4px 8px;
+}
+
