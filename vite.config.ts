@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { existsSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 const mascotDirectory = new URL('./public/mascot/', import.meta.url);
 const mascot = existsSync(mascotDirectory)
@@ -20,7 +21,16 @@ export default defineConfig({
 			},
 		},
 	],
-	resolve: { alias: [{ find: /^pdfjs-dist$/, replacement: 'pdfjs-dist/build/pdf.min.mjs' }] },
+	resolve: {
+		// The modern PDF.js build, preceded by the polyfills it needs in browsers that
+		// lack very recent built-ins (see src/infrastructure/pdf/pdfjs-engine.mjs).
+		alias: [
+			{
+				find: /^pdfjs-dist$/,
+				replacement: fileURLToPath(new URL('./src/infrastructure/pdf/pdfjs-engine.mjs', import.meta.url)),
+			},
+		],
+	},
 	define: { __MASCOT_ASSET__: JSON.stringify(mascot ? `/mascot/${encodeURIComponent(mascot)}` : null) },
 	server: { host: '127.0.0.1', port: 5173, strictPort: true },
 	build: {
@@ -30,6 +40,7 @@ export default defineConfig({
 				manualChunks(id) {
 					if (!id.includes('node_modules')) return;
 					if (id.includes('@rive-app')) return 'rive';
+					if (id.includes('/core-js/')) return 'pdf-polyfills';
 					if (id.includes('pdfjs-dist/web/')) return 'pdf-links';
 					if (id.includes('pdfjs-dist')) return 'pdf-engine';
 					if (id.includes('react-pdf')) return 'pdf-view';
@@ -49,4 +60,3 @@ export default defineConfig({
 		},
 	},
 });
-

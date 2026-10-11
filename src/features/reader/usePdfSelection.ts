@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { PageGeometry } from '../../infrastructure/pdf/geometry';
 import { capturePdfSelection, type TextSelection } from './selection';
+import { stabilizeTextSelection } from './textLayerSelection';
 
 /** Keep a completed selection stable while the floating toolbar takes focus. */
 export function usePdfSelection({
@@ -147,7 +148,9 @@ export function usePdfSelection({
 		}
 		window.addEventListener('scroll', reposition, true);
 		window.addEventListener('resize', reposition);
+		const unstabilize = root.current ? stabilizeTextSelection(root.current) : () => {};
 		return () => {
+			unstabilize();
 			cancel();
 			observer?.disconnect();
 			document.removeEventListener('pointerdown', down);

@@ -2,25 +2,30 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Tooltip } from '../../components/ui';
 import { useOverlayHost } from '../../components/ui/overlay';
-import type { HighlightColor } from '../../domain/highlight';
+import { HIGHLIGHT_COLORS, type HighlightColor } from '../../domain/highlight';
 import type { TextSelection } from './selection';
 import styles from './TextSelectionMenu.module.css';
-export type SelectionAction = 'highlight' | 'translate' | 'explain' | 'ask';
+export type SelectionAction = 'highlight' | 'note' | 'remove' | 'translate' | 'explain' | 'ask';
+const title = (color: string) => color[0].toUpperCase() + color.slice(1);
 // Viewport-clamped floating toolbar: prefers above the selection, falls below
-// near the top edge, and never clips outside the window. Purely presentational;
-// selection geometry and callbacks are unchanged.
+// near the top edge, and never clips outside the window.
 export default function TextSelectionMenu({
 	selection,
 	onAction,
 	persistent,
 	color,
-	onColor,
+	currentColor,
+	highlighted,
 }: {
 	selection: TextSelection;
-	onAction: (action: SelectionAction) => void;
+	onAction: (action: SelectionAction, color?: HighlightColor) => void;
 	persistent: boolean;
+	/** The color H and Note use: the last one chosen. */
 	color: HighlightColor;
-	onColor: (color: HighlightColor) => void;
+	/** Color of the highlight the selection lies within, if any. */
+	currentColor?: HighlightColor;
+	/** Whether the selection overlaps saved highlights. */
+	highlighted: boolean;
 }) {
 	const menuRef = useRef<HTMLDivElement>(null);
 	const host = useOverlayHost();
@@ -54,6 +59,7 @@ export default function TextSelectionMenu({
 		};
 	}, [selection, host]);
 	if (!selection.position) return null;
+	const locked = 'Save this paper to your library to highlight';
 	return createPortal(
 		<div
 			ref={menuRef}
@@ -65,26 +71,45 @@ export default function TextSelectionMenu({
 			style={{ left: position.left, top: position.top }}
 			onPointerDown={event => event.preventDefault()}
 		>
-			<div className={styles.colors} role='group' aria-label='Highlight color'>
-				{(['yellow', 'green', 'blue'] as const).map(value => (
-					<Tooltip key={value} content={`${value[0].toUpperCase() + value.slice(1)} highlight`}>
+			<div className={styles.colors} role='group' aria-label='Highlight'>
+				{HIGHLIGHT_COLORS.map(value => (
+					<Tooltip
+						key={value}
+						content={
+							!persistent
+								? locked
+								: currentColor === value
+									? `Already ${value}`
+									: `Highlight ${value}${value === color ? ' · H' : ''}`
+						}
+					>
 						<button
 							type='button'
 							className={`${styles.swatch} ${styles[value]}`}
-							aria-label={`${value[0].toUpperCase() + value.slice(1)} highlight`}
-							aria-pressed={color === value}
-							onClick={() => onColor(value)}
+							aria-label={`Highlight ${title(value)}`}
+							aria-pressed={currentColor === value}
+							data-default={value === color || undefined}
+							disabled={!persistent}
+							onClick={() => onAction('highlight', value)}
 						>
-							{color === value && <span aria-hidden='true'>✓</span>}
+							{currentColor === value && <span aria-hidden='true'>✓</span>}
 						</button>
 					</Tooltip>
 				))}
 			</div>
-			<Tooltip content={persistent ? 'Save highlight locally' : 'Save this document first'}>
-				<Button size='sm' variant='ghost' disabled={!persistent} onClick={() => onAction('highlight')}>
-					Highlight
+			<Tooltip content={persistent ? 'Highlight and write a note · N' : locked}>
+				<Button size='sm' variant='ghost' disabled={!persistent} onClick={() => onAction('note')}>
+					Note
 				</Button>
 			</Tooltip>
+			{highlighted && (
+				<Tooltip content='Remove the highlight here'>
+					<Button size='sm' variant='ghost' onClick={() => onAction('remove')}>
+						Remove
+					</Button>
+				</Tooltip>
+			)}
+			<span className={styles.divider} aria-hidden='true' />
 			<Tooltip content='Translate or clarify selected text'>
 				<Button size='sm' variant='ghost' onClick={() => onAction('translate')}>
 					Translate / Clarify

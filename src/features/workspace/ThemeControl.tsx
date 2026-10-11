@@ -2,15 +2,22 @@ import { useLayoutEffect, useState } from 'react';
 import { Dropdown } from '../../components/ui';
 export const THEME_KEY = 'nota.theme.v1';
 type Theme = 'system' | 'light' | 'dark';
+function storedTheme(): Theme {
+	try {
+		const value = localStorage.getItem(THEME_KEY);
+		return value === 'light' || value === 'dark' ? value : 'system';
+	} catch {
+		return 'system';
+	}
+}
+/** Apply the saved theme before the first render, so dark mode never flashes light. */
+export function applyStoredTheme() {
+	const theme = storedTheme();
+	document.documentElement.dataset.theme =
+		theme === 'system' ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+}
 export default function ThemeControl() {
-	const [theme, setTheme] = useState<Theme>(() => {
-		try {
-			const value = localStorage.getItem(THEME_KEY);
-			return value === 'light' || value === 'dark' ? value : 'system';
-		} catch {
-			return 'system';
-		}
-	});
+	const [theme, setTheme] = useState<Theme>(storedTheme);
 	useLayoutEffect(() => {
 		const query = window.matchMedia?.('(prefers-color-scheme: dark)');
 		const apply = () => {

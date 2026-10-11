@@ -25,8 +25,11 @@ actions. Choose a local model to keep inference on your machine, or opt into a c
 - 📄 **PDF reader & virtualized viewport.** PDF.js through React-PDF powers continuous multi-page scrolling, page
   navigation, Fit width / Fit page, and 50–200% manual zoom. Only pages near the viewport mount their rendering layers.
   Your library remembers reading position, zoom and fit mode, and identical files are deduplicated by SHA-256.
-- 🖍️ **Normalized highlighting & local notes.** Page-relative geometric coordinates keep highlights aligned through zoom
-  and PDF rotation. Highlights and notes persist in IndexedDB through Dexie.js, alongside your PDF library.
+- 🖍️ **Highlighting & local notes.** Select text and pick a color (or press `H`); choose **Note** (or `N`) to write a
+  thought right away. Highlights are anchored to the page text and stored with page-relative geometry, so they stay on
+  the right words through zoom and rotation. Highlighting over existing marks extends them instead of stacking
+  duplicates, and every highlight change can be undone with `⌘Z` / `Ctrl+Z`. Highlights, notes and unsent note drafts
+  persist locally; highlights and notes live in IndexedDB through Dexie.js, alongside your PDF library.
 - 📦 **Research you can take with you.** Export highlights and notes as Markdown with page numbers, or back up your
   whole library—including PDFs—and restore it in another browser. Imports preserve existing work and avoid duplicates.
 - 🌿 **Focus mode.** Hide the assistant completely, enter fullscreen, and adjust the workspace to your reading style.
@@ -74,13 +77,28 @@ duplicates when repeated. Cached AI responses, session conversations and workspa
 unencrypted files; keep them somewhere private. The maximum backup/import file size is **256 MiB**.
 
 Choose **Focus** or the assistant's close button to give the PDF the entire workspace. **Show Nota** restores the
-assistant and its current conversation; **Alt + \*\* toggles focus. **Fullscreen** uses the browser's fullscreen mode;
-press **Escape** to leave it. Choose **Fit width** or **Fit page\*\* from the Zoom menu. Fit modes adapt to viewport
+assistant and its current conversation; `Alt` + `\` toggles focus. **Fullscreen** uses the browser's fullscreen mode;
+press **Escape** to leave it. Choose **Fit width** or **Fit page** from the Zoom menu. Fit modes adapt to viewport
 changes while preserving your reading position; selecting a percentage returns to manual zoom.
 
 Drag the divider or focus it and use arrow keys to resize the panes; **Home** restores the default proportion. Pane
 sizes and assistant visibility persist in this browser. Narrow screens use a vertical split, and reduced-motion
 preferences disable the focus animation.
+
+### Keyboard shortcuts
+
+| Shortcut                          | Action                                                          |
+| --------------------------------- | --------------------------------------------------------------- |
+| `H`                               | Highlight the selected text with the last color used            |
+| `N`                               | Highlight the selection and start a note on it                  |
+| `⌘Z` / `Ctrl+Z`                   | Undo the last highlight change (create, combine, color, remove) |
+| `⌘⇧Z` / `Ctrl+Shift+Z` / `Ctrl+Y` | Redo                                                            |
+| `⌘↵` / `Ctrl+Enter`               | Save the note you are writing or editing                        |
+| `Escape`                          | Cancel a note edit, close menus and panels, clear the selection |
+| `Alt` + `N`                       | Show or hide **Highlights & notes**                             |
+| `Alt` + `\`                       | Toggle focus mode                                               |
+
+Shortcuts other than note saving are ignored while you type in a text field, so a note's own undo keeps working.
 
 Choose **Settings → Appearance → Color theme** to use **System**, **Light**, or **Dark**. The choice persists locally;
 System follows your operating system. Menus and crop controls stay within the visible workspace, including fullscreen.
@@ -156,9 +174,11 @@ disable Ollama cloud features, configure `OLLAMA_NO_CLOUD=1` and restart the dae
 
 ### Try the reader
 
-Open your own PDF or choose the bundled English or Persian sample. Select text to highlight it, then expand **Highlights
-& notes** to edit color or add a note. Reload to check persistence, or use **Saved papers** to switch documents. For an
-AI request, **Stop response** cancels streaming; **Regenerate** bypasses the translation/clarification cache.
+Open your own PDF or choose the bundled English or Persian sample. Select text and click a color to highlight it, or
+choose **Note** to write about it immediately. Click a highlight to open it in **Highlights & notes**, where you can
+change its color, add or edit notes, or remove it. Reload to check persistence, or use **Saved papers** to switch
+documents. For an AI request, **Stop response** cancels streaming; **Regenerate** bypasses the translation/clarification
+cache.
 
 The small original samples exercise layout and text layers, rather than scientific extraction quality. The Persian
 fixture contains shaped presentation glyphs that impair text extraction; Nota blocks sending damaged text. Use a PDF

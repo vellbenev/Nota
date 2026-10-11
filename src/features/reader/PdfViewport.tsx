@@ -1,22 +1,24 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { liveQuery } from 'dexie';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
-import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { Button, ScrollArea } from '../../components/ui';
+import { ScrollArea } from '../../components/ui';
 import { normalizeView, type ReaderView } from '../../domain/document.ts';
-import type { Annotation, Highlight, HighlightColor } from '../../domain/highlight';
+import { isHighlightColor, type Annotation, type Highlight, type HighlightColor } from '../../domain/highlight';
 import { highlights } from '../../infrastructure/db/highlights';
-import { projectRect, type PageGeometry } from '../../infrastructure/pdf/geometry';
+import { normalizeClientRects, projectRect, type PageGeometry } from '../../infrastructure/pdf/geometry';
 import type { SelectedSnip } from '../../infrastructure/pdf/snip';
 import HighlightOverlay from '../highlights/HighlightOverlay';
 import { highlightAtPoint } from '../highlights/hitTest';
+import HighlightToast from '../highlights/HighlightToast';
 import NotesPanel from '../highlights/NotesPanel';
-import { useHighlightCreation } from '../highlights/useHighlightCreation';
+import { overlappingHighlights, planHighlight, type Layout } from '../highlights/planning';
+import { useHighlightHistory, type Overlay } from '../highlights/useHighlightHistory';
 import { downloadFile, libraryTransfer } from '../library/transfer';
 import {
 	DEFAULT_PAGE,
@@ -26,6 +28,7 @@ import {
 	viewAtOffset,
 	type PageDimensions,
 } from './geometry.ts';
+import { anchorFor, domRange, pageText, rangeContains, TEXT_LAYER } from './pageText';
 import viewport from './PdfViewport.module.css';
 import ReaderToolbar from './ReaderToolbar';
 import type { TextSelection } from './selection.ts';
@@ -34,11 +37,25 @@ import TextSelectionMenu, { type SelectionAction } from './TextSelectionMenu';
 import { usePdfSelection } from './usePdfSelection';
 
 // Vite resolves this asset URL in both dev and production, using the local worker
-// from the same PDF.js package as React-PDF.
+// from the same PDF.js package and version as React-PDF. The legacy worker build carries
+// its own polyfills, so PDFs open in browsers without the newest built-ins.
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const DOCUMENT_LOAD_TIMEOUT_MS = 45_000;
 const failureMessage = (failure: unknown) => (failure instanceof Error ? failure.message : String(failure));
+const COLOR_KEY = 'nota:highlight-color';
+function storedColor(): HighlightColor {
+	try {
+		const value = window.localStorage.getItem(COLOR_KEY);
+		return isHighlightColor(value) ? value : 'yellow';
+	} catch {
+		return 'yellow';
+	}
+}
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+const isEditable = (target: EventTarget | null) =>
+	target instanceof Element &&
+	!!target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
 
 interface Props {
 	onSnip?: (snip: Omit<SelectedSnip, 'docId'>) => void;
@@ -141,6 +158,7 @@ function VirtualPages({
 	const [localError, setLocalError] = useState('');
 	const [notesOpen, setNotesOpen] = useState(false);
 	const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
+	const [composeRequest, setComposeRequest] = useState<{ id: string; nonce: number } | null>(null);
 	const pointerStart = useRef<{ x: number; y: number } | null>(null);
 	const jumpSequence = useRef(0);
 	useEffect(
@@ -149,7 +167,15 @@ function VirtualPages({
 		},
 		[],
 	);
-	const [highlightColor, setHighlightColor] = useState<HighlightColor>('yellow');
+	const [highlightColor, setHighlightColorState] = useState<HighlightColor>(storedColor);
+	const setHighlightColor = (color: HighlightColor) => {
+		setHighlightColorState(color);
+		try {
+			window.localStorage.setItem(COLOR_KEY, color);
+		} catch {
+			// Remembering the last color is a convenience only.
+		}
+	};
 	const geometries = useRef(new Map<number, PageGeometry>());
 	const [, setGeometryRevision] = useState(0);
 	const scrollRef = useRef<HTMLDivElement>(null);
@@ -164,7 +190,7 @@ function VirtualPages({
 			setSnipPage(null);
 		},
 	});
-	const creation = useHighlightCreation(saved);
+	const history = useHighlightHistory(saved);
 	useEffect(() => {
 		if (!docId || !persistent) return;
 		const subscription = liveQuery(async () => ({
@@ -179,33 +205,173 @@ function VirtualPages({
 		});
 		return () => subscription.unsubscribe();
 	}, [docId, persistent]);
-	function openHighlight(item: Highlight) {
+	function openHighlight(item: Highlight, compose = false) {
 		dismiss(true);
 		setActiveHighlight(item.id);
 		setNotesOpen(true);
+		if (compose) setComposeRequest(previous => ({ id: item.id, nonce: (previous?.nonce ?? 0) + 1 }));
 	}
 	useEffect(() => {
-		if (activeHighlight && !saved.some(item => item.id === activeHighlight)) setActiveHighlight(null);
-	}, [saved, activeHighlight]);
+		if (activeHighlight && !history.items.some(item => item.id === activeHighlight)) setActiveHighlight(null);
+	}, [history.items, activeHighlight]);
 
-	function selectionAction(action: SelectionAction) {
+	/** The page's live text layer: its readable text and a way to lay out any range of it. */
+	function pageContext(page: number) {
+		const layer = scrollRef.current?.querySelector<HTMLElement>(`[data-pdf-page="${page}"] ${TEXT_LAYER}`);
+		const geometry = geometries.current.get(page);
+		const text = layer ? pageText(layer) : null;
+		const layout: Layout = range => {
+			if (!layer || !geometry || text === null) return null;
+			const dom = domRange(layer, range);
+			if (!dom) return null;
+			const rects = normalizeClientRects(
+				Array.from(dom.getClientRects()),
+				layer.getBoundingClientRect(),
+				geometry,
+			);
+			return rects.length ? { rects, anchor: anchorFor(text, range) } : null;
+		};
+		return { text, layout };
+	}
+	const selectionState = useMemo(() => {
+		if (!selected?.range) return { overlaps: [], currentColor: undefined };
+		const overlaps = overlappingHighlights(selected, history.items, pageContext(selected.page).text);
+		const inside = overlaps.length === 1 && rangeContains(overlaps[0].range, selected.range);
+		return { overlaps, currentColor: inside ? overlaps[0].item.color : undefined };
+	}, [selected, history.items]);
+
+	const notesFor = (ids: string[]) => notes.filter(note => ids.includes(note.highlightId)).length;
+	function removeHighlights(items: Highlight[]) {
+		const ids = items.map(item => item.id);
+		const count = notesFor(ids);
+		return history.run(() => highlights.removeHighlights(ids), {
+			overlay: { show: [], hide: ids, restore: items },
+			saving: 'Removing highlight…',
+			done: count ? `Highlight and ${plural(count, 'note')} removed` : 'Highlight removed',
+			undone: 'Highlight restored',
+		});
+	}
+	function recolor(items: Highlight[], color: HighlightColor) {
+		return history.run(
+			() =>
+				highlights.recolor(
+					items.map(item => item.id),
+					color,
+				),
+			{
+				overlay: { show: items.map(item => ({ ...item, color })), hide: [], restore: items },
+				saving: 'Changing color…',
+				done: `Changed to ${color}`,
+				undone: 'Color restored',
+			},
+		);
+	}
+
+	/** Highlight the current selection; returns the highlight that now covers it. */
+	function highlightSelection(color: HighlightColor, keepColor = false): Highlight | undefined {
+		if (!selected || !docId || !persistent || !selected.rects || !selected.anchor) return;
+		const { text, layout } = pageContext(selected.page);
+		const plan = planHighlight(
+			{ ...selected, docId, rects: selected.rects, anchor: selected.anchor },
+			color,
+			history.items,
+			text,
+			layout,
+		);
+		if (plan.kind === 'none') return plan.item;
+		if (plan.kind === 'recolor') {
+			if (keepColor) return plan.items[0];
+			void recolor(plan.items, color).catch(() => undefined);
+			return { ...plan.items[0], color };
+		}
+		if (plan.kind === 'merge') {
+			const { survivor, absorbed } = plan;
+			const original = history.items.find(item => item.id === survivor.id)!;
+			const overlay: Overlay = {
+				show: [survivor],
+				hide: absorbed.map(item => item.id),
+				restore: [original, ...absorbed],
+			};
+			void history
+				.run(
+					() =>
+						highlights.merge(
+							survivor,
+							absorbed.map(item => item.id),
+						),
+					{
+						overlay,
+						saving: 'Saving highlight…',
+						done: 'Highlights combined',
+						undone: 'Highlights restored',
+					},
+				)
+				.catch(() => undefined);
+			return survivor;
+		}
+		const created: Highlight = { ...plan.value, id: crypto.randomUUID(), createdAt: Date.now() };
+		void history
+			.run(() => highlights.create(plan.value, created.id, created.createdAt), {
+				overlay: { show: [created], hide: [], restore: [] },
+				saving: 'Saving highlight…',
+				done: 'Highlight saved',
+				undone: 'Highlight undone',
+			})
+			.catch(() => undefined);
+		return created;
+	}
+
+	function selectionAction(action: SelectionAction, color?: HighlightColor) {
 		if (!selected) return;
-		if (action === 'highlight' && docId && selected.rects && selected.anchor) {
-			creation.create({
-				docId,
-				page: selected.page,
-				rotation: selected.rotation,
-				rects: selected.rects,
-				anchor: selected.anchor,
-				color: highlightColor,
-			});
+		if (action === 'highlight') {
+			const chosen = color ?? highlightColor;
+			setHighlightColor(chosen);
+			if (highlightSelection(chosen)) dismiss(true);
+		} else if (action === 'note') {
+			const item = highlightSelection(highlightColor, true);
+			if (item) openHighlight(item, true);
+		} else if (action === 'remove') {
+			const items = selectionState.overlaps.map(entry => entry.item);
 			dismiss(true);
-		} else if (action !== 'highlight') {
+			if (items.length) void removeHighlights(items).catch(() => undefined);
+		} else {
 			const passage = selected;
 			dismiss(true);
 			onAssistantAction?.(passage, action);
 		}
 	}
+	const shortcuts = useRef({ selectionAction, history, selected, persistent });
+	shortcuts.current = { selectionAction, history, selected, persistent };
+	useEffect(() => {
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.defaultPrevented || event.isComposing || isEditable(event.target)) return;
+			if (document.querySelector('dialog[open]')) return;
+			const { selectionAction, history, selected, persistent } = shortcuts.current;
+			const key = event.key.toLowerCase(),
+				mod = event.metaKey || event.ctrlKey;
+			if (event.altKey && !mod && event.code === 'KeyN' && !event.repeat) {
+				event.preventDefault();
+				setNotesOpen(open => !open);
+			} else if (mod && !event.altKey && (key === 'z' || (key === 'y' && event.ctrlKey && !event.metaKey))) {
+				const redo = key === 'y' || event.shiftKey;
+				if (redo ? !history.canRedo : !history.canUndo) return;
+				event.preventDefault();
+				void (redo ? history.redo() : history.undo());
+			} else if (
+				!mod &&
+				!event.altKey &&
+				!event.shiftKey &&
+				selected &&
+				persistent &&
+				(key === 'h' || key === 'n')
+			) {
+				event.preventDefault();
+				selectionAction(key === 'h' ? 'highlight' : 'note');
+			}
+		}
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
+	}, []);
 	const [dimensions, setDimensions] = useState<PageDimensions[]>(() =>
 		Array.from({ length: pdf.numPages }, () => DEFAULT_PAGE),
 	);
@@ -408,26 +574,20 @@ function VirtualPages({
 					persistent={persistent}
 					onAction={selectionAction}
 					color={highlightColor}
-					onColor={setHighlightColor}
+					currentColor={selectionState.currentColor}
+					highlighted={selectionState.overlaps.length > 0}
 				/>
 			)}
-			{creation.notice && (
-				<div className={viewport.highlightNotice}>
-					<span role={creation.notice.phase === 'error' ? 'alert' : 'status'}>{creation.notice.message}</span>
-					{creation.canUndo && (
-						<Button size='sm' variant='ghost' onClick={() => void creation.undo()}>
-							Undo highlight
-						</Button>
-					)}
-					<Button
-						size='sm'
-						variant='ghost'
-						aria-label='Dismiss highlight notification'
-						onClick={creation.dismissNotice}
-					>
-						×
-					</Button>
-				</div>
+			{history.notice && (
+				<HighlightToast
+					className={viewport.highlightNotice}
+					notice={history.notice}
+					canUndo={history.canUndo}
+					canRedo={history.canRedo}
+					onUndo={() => void history.undo()}
+					onRedo={() => void history.redo()}
+					onDismiss={history.dismissNotice}
+				/>
 			)}
 			{localError && (
 				<p role='alert' className={`reader-error ${viewport.inlineError}`}>
@@ -486,7 +646,7 @@ function VirtualPages({
 												const geometry = geometries.current.get(item.index + 1);
 												if (!geometry) return;
 												const target = highlightAtPoint(
-													saved.filter(h => h.page === item.index + 1),
+													history.items.filter(h => h.page === item.index + 1),
 													geometry,
 													event.currentTarget.getBoundingClientRect(),
 													event.clientX,
@@ -518,7 +678,7 @@ function VirtualPages({
 											/>
 											{geometries.current.get(item.index + 1) && (
 												<HighlightOverlay
-													items={creation.items.filter(h => h.page === item.index + 1)}
+													items={history.items.filter(h => h.page === item.index + 1)}
 													activeId={notesOpen ? activeHighlight : null}
 													onActivate={
 														snipMode
@@ -570,9 +730,10 @@ function VirtualPages({
 							: undefined
 					}
 					open={notesOpen}
-					items={saved}
+					items={history.items}
 					notes={notes}
 					activeId={activeHighlight}
+					composeRequest={composeRequest}
 					onClose={() => {
 						setNotesOpen(false);
 						const root = controlsHost ?? scrollRef.current?.closest('.pdf-document');
@@ -580,13 +741,33 @@ function VirtualPages({
 							preventScroll: true,
 						});
 					}}
-					onSelect={setActiveHighlight}
+					onSelect={id => setActiveHighlight(current => (current === id ? null : id))}
 					onJump={item => void jumpToHighlight(item)}
-					onColor={highlights.color}
-					onRemove={highlights.remove}
-					onAddNote={highlights.addNote}
-					onUpdateNote={highlights.updateNote}
-					onRemoveNote={highlights.removeNote}
+					onColor={(id, color) => {
+						const item = history.items.find(entry => entry.id === id);
+						return item
+							? recolor([item], color)
+							: Promise.reject(new Error('This highlight no longer exists.'));
+					}}
+					onRemove={id => {
+						const item = history.items.find(entry => entry.id === id);
+						return item ? removeHighlights([item]) : Promise.resolve();
+					}}
+					// Note writes wait for pending highlight writes, e.g. a highlight created by "Note".
+					onAddNote={async (id, text) => {
+						await history.idle();
+						await highlights.addNote(id, text);
+						// The highlight now carries a note; an Undo offer for creating it would only conflict.
+						if (history.notice?.phase === 'saved') history.dismissNotice();
+					}}
+					onUpdateNote={(id, text) => history.idle().then(() => highlights.updateNote(id, text))}
+					onRemoveNote={id =>
+						history.run(() => highlights.deleteNote(id), {
+							saving: 'Deleting note…',
+							done: 'Note deleted',
+							undone: 'Note restored',
+						})
+					}
 					onExplain={item => {
 						dismiss(true);
 						onAssistantAction?.(

@@ -63,9 +63,9 @@
 		box-shadow var(--ui-duration) var(--ui-ease);
 }
 .panel textarea {
-	min-height: 80px;
+	min-height: 0;
 	resize: vertical;
-	margin: 8px 0;
+	margin: 0;
 }
 .panel input::placeholder,
 .panel textarea::placeholder {
@@ -130,20 +130,15 @@
 .card:hover {
 	border-color: var(--ui-border);
 	box-shadow: var(--ui-shadow-sm);
-	transform: translateY(-1px);
 }
-.card:focus-within {
+.card:focus-visible {
+	outline: none;
 	border-color: var(--ui-ring);
-	box-shadow:
-		0 0 0 3px var(--ui-ring-soft),
-		var(--ui-shadow-xs);
+	box-shadow: 0 0 0 3px var(--ui-ring-soft);
 }
 .active {
-	border-color: var(--ui-accent);
-	background: var(--ui-accent-soft);
-	box-shadow:
-		0 0 0 3px var(--ui-ring-soft),
-		var(--ui-shadow-xs);
+	border-color: var(--ui-border-strong);
+	box-shadow: var(--ui-shadow-sm);
 }
 .cardHeader,
 .actions {
@@ -153,11 +148,34 @@
 	flex-wrap: wrap;
 }
 .noteActions {
+	position: absolute;
+	top: 3px;
+	inset-inline-end: 3px;
 	display: flex;
-	gap: 8px;
-	flex-wrap: wrap;
+	gap: 2px;
 	align-items: center;
-	margin-top: 8px;
+	padding: 2px;
+	border-radius: var(--ui-radius-xs);
+	background: var(--ui-surface-raised);
+	box-shadow: var(--ui-shadow-xs);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity var(--ui-duration-fast) var(--ui-ease);
+}
+.note:hover .noteActions,
+.note:focus-within .noteActions {
+	opacity: 1;
+	pointer-events: auto;
+}
+@media (hover: none) {
+	.noteActions {
+		position: static;
+		justify-content: flex-end;
+		margin-top: 4px;
+		background: none;
+		box-shadow: none;
+		opacity: 1;
+	}
 }
 .formActions {
 	display: flex;
@@ -165,6 +183,47 @@
 	flex-wrap: wrap;
 	align-items: center;
 	margin-top: 8px;
+}
+.hint {
+	margin: 0;
+	color: var(--ui-faint);
+	font-size: 11px;
+}
+.composer textarea {
+	line-height: 1.55;
+}
+.swatches {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin-inline-end: auto;
+}
+.swatch {
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	cursor: pointer;
+	box-shadow: inset 0 0 0 1px #00000014;
+	transition:
+		transform var(--ui-duration-fast) var(--ui-ease),
+		box-shadow var(--ui-duration-fast) var(--ui-ease);
+}
+.swatch:hover {
+	transform: scale(1.1);
+}
+.swatch[aria-pressed='true'] {
+	box-shadow:
+		0 0 0 2px var(--ui-surface-raised),
+		0 0 0 4px var(--ui-text-strong);
+}
+.swatch:focus-visible {
+	outline: 2px solid var(--ui-ring);
+	outline-offset: 3px;
+}
+.remove:hover {
+	color: var(--ui-danger);
 }
 .cardHeader > span:last-child {
 	margin-inline-start: auto;
@@ -201,7 +260,10 @@
 	background: #6ab0ff;
 }
 .quote {
-	display: block;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 4;
+	overflow: hidden;
 	width: 100%;
 	padding: 8px 0 2px;
 	border: 0;
@@ -231,27 +293,26 @@
 	margin-top: 8px;
 }
 .editor {
-	border-top: 1px solid var(--ui-border-soft);
-	padding-top: 12px;
+	display: grid;
+	gap: 8px;
 	margin-top: 10px;
 }
-.editor form {
-	margin-top: 12px;
-}
 .editor p {
+	margin: 0;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	line-height: 1.65;
 }
-.actions > div {
-	min-width: 120px;
+.actions {
+	gap: 2px;
+	padding-top: 8px;
+	border-top: 1px solid var(--ui-border-soft);
 }
 .note {
-	margin: 10px 0;
-	padding: 10px 12px;
+	position: relative;
+	padding: 8px 10px;
 	border-radius: var(--ui-radius-sm);
 	background: var(--ui-surface-sunken);
-	border: 1px solid var(--ui-border-soft);
 }
 .confirm {
 	padding: 12px;
@@ -264,6 +325,21 @@
 .error {
 	color: var(--ui-danger);
 	font-weight: 600;
+}
+.empty p {
+	margin: 0 0 6px;
+}
+.empty p:first-child {
+	color: var(--ui-text-strong);
+	font-weight: 650;
+}
+.empty kbd {
+	padding: 1px 5px;
+	border: 1px solid var(--ui-border-strong);
+	border-bottom-width: 2px;
+	border-radius: 5px;
+	font: inherit;
+	font-size: 11px;
 }
 .empty {
 	padding: 28px 16px;
@@ -327,4 +403,9 @@
 }
 .card:hover {
 	transform: none;
+}
+
+.active .quote {
+	display: block;
+	-webkit-line-clamp: unset;
 }

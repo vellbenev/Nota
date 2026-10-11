@@ -115,6 +115,13 @@ export async function prepareBackup(file: Blob): Promise<PreparedBackup> {
 		ids.set(docId, document);
 		documents.push(document);
 	}
+	const textRange = (value: unknown) => {
+		const range = record(value);
+		const start = number(range.start, 0, Number.MAX_SAFE_INTEGER, true),
+			end = number(range.end, 0, Number.MAX_SAFE_INTEGER, true);
+		if (end <= start) throw invalid();
+		return { start, end };
+	};
 	const highlights = array(value.highlights).map(entry => {
 		const item = record(entry),
 			anchor = record(item.anchor);
@@ -142,6 +149,7 @@ export async function prepareBackup(file: Blob): Promise<PreparedBackup> {
 			color: item.color as Highlight['color'],
 			createdAt: number(item.createdAt),
 			...(item.rotation !== undefined ? { rotation: number(item.rotation, -360, 360, true) } : {}),
+			...(item.range !== undefined ? { range: textRange(item.range) } : {}),
 			anchor: {
 				quote: text(anchor.quote, 6000),
 				prefix: text(anchor.prefix, 6000, true),

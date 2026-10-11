@@ -34,14 +34,19 @@
 }
 .colors {
 	display: flex;
-	gap: 5px;
-	padding: 1px 9px 1px 3px;
-	margin-inline-end: 4px;
-	border-inline-end: 1px solid var(--ui-border-soft);
+	gap: 6px;
+	padding: 1px 6px 1px 3px;
+}
+.divider {
+	align-self: stretch;
+	width: 1px;
+	margin: 4px 3px;
+	background: var(--ui-border-soft);
 }
 .swatch {
-	width: 28px;
-	height: 28px;
+	position: relative;
+	width: 24px;
+	height: 24px;
 	padding: 0;
 	border: 2px solid transparent;
 	border-radius: 50%;
@@ -75,6 +80,18 @@
 	box-shadow:
 		0 0 0 3px var(--ui-ring-soft),
 		0 2px 8px #0002;
+}
+.swatch[data-default]:not([aria-pressed='true'])::after {
+	content: '';
+	position: absolute;
+	inset: -5px;
+	border-radius: 50%;
+	border: 1.5px solid var(--ui-border-strong);
+}
+.swatch:disabled {
+	cursor: not-allowed;
+	opacity: 0.4;
+	transform: none;
 }
 .swatch:focus-visible {
 	outline: 2px solid var(--ui-ring);

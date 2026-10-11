@@ -21,6 +21,7 @@ async function fixture() {
 		color: 'green',
 		rects: [[0.1, 0.2, 0.4, 0.03]],
 		anchor: { quote: 'Evidence <img src="remote">\nSecond line', prefix: 'Before', suffix: 'After' },
+		range: { start: 6, end: 45 },
 	});
 	await highlights.addNote(mark.id, 'My note فارسی [link](https://example.com)');
 	return { db, docs, docId, mark, highlights, transfer: createLibraryTransfer(db) };

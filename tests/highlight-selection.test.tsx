@@ -1,7 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import type { HighlightColor } from '../src/domain/highlight';
 import TextSelectionMenu from '../src/features/reader/TextSelectionMenu';
 import { usePdfSelection } from '../src/features/reader/usePdfSelection';
 
@@ -10,10 +9,13 @@ const onSelection = vi.fn(),
 	onError = vi.fn(),
 	onAction = vi.fn();
 let top = 150;
+let persistent = true;
+let currentColor: 'yellow' | 'green' | 'blue' | undefined;
+let lastSelection: Parameters<typeof onSelection>[0];
+onSelection.mockImplementation(value => (lastSelection = value));
 function Fixture() {
 	const root = useRef<HTMLDivElement>(null),
 		geometries = useRef(new Map([[1, geometry]]));
-	const [color, setColor] = useState<HighlightColor>('yellow');
 	const { selected } = usePdfSelection({ root, geometries, enabled: true, onSelection, onError, onEscape: vi.fn() });
 	return (
 		<>
@@ -27,20 +29,21 @@ function Fixture() {
 			{selected && (
 				<TextSelectionMenu
 					selection={selected}
-					persistent
+					persistent={persistent}
 					onAction={onAction}
-					color={color}
-					onColor={setColor}
+					color='yellow'
+					currentColor={currentColor}
+					highlighted={!!currentColor}
 				/>
 			)}
 		</>
 	);
 }
-function select() {
+function select(start = 2, end = 15) {
 	const node = screen.getByText('A passage across several words').firstChild!;
 	const range = document.createRange();
-	range.setStart(node, 2);
-	range.setEnd(node, 15);
+	range.setStart(node, start);
+	range.setEnd(node, end);
 	window.getSelection()!.removeAllRanges();
 	window.getSelection()!.addRange(range);
 	fireEvent(document, new Event('selectionchange'));
@@ -48,6 +51,9 @@ function select() {
 beforeEach(() => {
 	vi.useFakeTimers();
 	top = 150;
+	persistent = true;
+	currentColor = undefined;
+	lastSelection = undefined;
 	vi.stubGlobal('PointerEvent', MouseEvent);
 	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
 		return { left: 0, top: 100, right: 600, bottom: 900, width: 600, height: 800 } as DOMRect;
@@ -78,10 +84,8 @@ test('does not interrupt a drag; final selection and chosen color survive toolba
 	expect(screen.queryByRole('toolbar', { name: 'Selection actions' })).toBeNull();
 	fireEvent.pointerUp(text);
 	act(() => vi.advanceTimersByTime(1));
-	const green = screen.getByRole('button', { name: 'Green highlight' });
+	const green = screen.getByRole('button', { name: 'Highlight Green' });
 	expect(fireEvent.pointerDown(green)).toBe(false);
-	fireEvent.click(green);
-	expect(green.getAttribute('aria-pressed')).toBe('true');
 	act(() => {
 		green.focus();
 		window.getSelection()!.removeAllRanges();
@@ -89,8 +93,41 @@ test('does not interrupt a drag; final selection and chosen color survive toolba
 	fireEvent(document, new Event('selectionchange'));
 	act(() => vi.advanceTimersByTime(200));
 	expect(screen.getByRole('toolbar', { name: 'Selection actions' })).toBeTruthy();
-	fireEvent.click(screen.getByRole('button', { name: 'Highlight', exact: true }));
-	expect(onAction).toHaveBeenCalledExactlyOnceWith('highlight');
+	// One click on a color highlights with that color.
+	fireEvent.click(green);
+	expect(onAction).toHaveBeenCalledExactlyOnceWith('highlight', 'green');
+	expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+});
+
+test('selections record page-text offsets and drop surrounding whitespace', () => {
+	render(<Fixture />);
+	// "A passage across several words": offsets 1..17 are " passage across " (spaces at both ends).
+	select(1, 17);
+	act(() => vi.advanceTimersByTime(110));
+	expect(lastSelection).toMatchObject({
+		text: 'passage across',
+		range: { start: 2, end: 16 },
+		anchor: { quote: 'passage across', prefix: 'A ', suffix: ' several words' },
+	});
+});
+
+test('already highlighted text shows its color and a Remove action; session documents cannot highlight', () => {
+	currentColor = 'blue';
+	render(<Fixture />);
+	select();
+	act(() => vi.advanceTimersByTime(110));
+	expect(screen.getByRole('button', { name: 'Highlight Blue' }).getAttribute('aria-pressed')).toBe('true');
+	fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+	expect(onAction).toHaveBeenCalledWith('remove');
+	cleanup();
+	persistent = false;
+	currentColor = undefined;
+	render(<Fixture />);
+	select();
+	act(() => vi.advanceTimersByTime(110));
+	expect((screen.getByRole('button', { name: 'Highlight Yellow' }) as HTMLButtonElement).disabled).toBe(true);
+	expect((screen.getByRole('button', { name: 'Note' }) as HTMLButtonElement).disabled).toBe(true);
+	expect((screen.getByRole('button', { name: 'Explain' }) as HTMLButtonElement).disabled).toBe(false);
 });
 
 test('selectionchange settles keyboard/programmatic selection; scrolling keeps visible selection and dismisses offscreen selection', () => {

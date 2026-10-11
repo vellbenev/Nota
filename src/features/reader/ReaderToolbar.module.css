@@ -132,3 +132,9 @@
 		padding-inline: 8px;
 	}
 }
+
+.toggleOn {
+	background: var(--ui-accent-soft);
+	border-color: var(--ui-accent);
+	color: var(--ui-text-strong);
+}

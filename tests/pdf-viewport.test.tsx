@@ -248,21 +248,31 @@ test('selection → highlight → local note → switch and remount persists, wi
 	window.getSelection()!.removeAllRanges();
 	window.getSelection()!.addRange(range);
 	fireEvent.pointerUp(screen.getByLabelText('PDF pages'));
-	fireEvent.click(await screen.findByRole('button', { name: 'Green highlight' }));
-	fireEvent.click(screen.getByRole('button', { name: 'Highlight', exact: true }));
-	// The chosen color is visible before the IndexedDB/live-query round trip.
+	// One click on a color highlights; the color is visible before the IndexedDB round trip.
+	fireEvent.click(await screen.findByRole('button', { name: 'Highlight Green' }));
 	expect(ui.container.querySelectorAll('.highlight-mark.green')).toHaveLength(1);
 	await screen.findByText('Highlight saved');
-	fireEvent.click(screen.getByRole('button', { name: 'Undo highlight' }));
+	const [stored] = await highlights.list(docId);
+	expect(stored.range).toEqual({ start: 7, end: 20 });
+	expect(stored.anchor).toEqual({ quote: 'English فارسی', prefix: 'Before ', suffix: ' after' });
+	fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 	expect(ui.container.querySelectorAll('.highlight-mark')).toHaveLength(0);
 	await screen.findByText('Highlight undone');
 	expect(await database.highlights.where('docId').equals(docId).count()).toBe(0);
+	// H highlights with the last color used.
 	window.getSelection()!.addRange(range);
 	fireEvent.pointerUp(screen.getByLabelText('PDF pages'));
-	fireEvent.click(await screen.findByRole('button', { name: 'Highlight', exact: true }));
+	await screen.findByRole('toolbar', { name: 'Selection actions' });
+	fireEvent.keyDown(document.body, { key: 'h' });
 	await screen.findByText('Highlight saved');
+	expect(ui.container.querySelectorAll('.highlight-mark.green')).toHaveLength(1);
+	// Highlighting the same text again never stacks a second mark.
+	window.getSelection()!.addRange(range);
+	fireEvent.pointerUp(screen.getByLabelText('PDF pages'));
+	fireEvent.click(await screen.findByRole('button', { name: 'Highlight Green' }));
+	expect(await database.highlights.where('docId').equals(docId).count()).toBe(1);
 	fireEvent.click(await screen.findByRole('button', { name: /Open saved highlight on page 1/ }));
-	await screen.findByRole('combobox', { name: /Highlight color/ });
+	await screen.findByRole('group', { name: /Highlight color/ });
 	fireEvent.change(screen.getByLabelText('Note for page 1'), { target: { value: 'My local note' } });
 	fireEvent.submit(screen.getByLabelText('Note for page 1').closest('form')!);
 	await screen.findByText('My local note');
@@ -289,30 +299,34 @@ test('selection → highlight → local note → switch and remount persists, wi
 	// A drag over a saved mark must not open its editor.
 	fireEvent.pointerDown(annotated, { clientX: 80, clientY: 105 });
 	fireEvent.click(annotated, { clientX: 200, clientY: 105, detail: 1 });
-	expect(screen.queryByRole('combobox', { name: /Highlight color/ })).toBeNull();
+	expect(screen.queryByRole('group', { name: /Highlight color/ })).toBeNull();
 	// A normal pointer click opens the same editor as the keyboard target.
 	fireEvent.pointerDown(annotated, { clientX: 80, clientY: 105 });
 	fireEvent.click(annotated, { clientX: 80, clientY: 105, detail: 1 });
 	expect(await screen.findByText('Revised local note')).toBeTruthy();
-	fireEvent.click(screen.getByRole('combobox', { name: /Highlight color/ }));
-	fireEvent.click(screen.getByRole('option', { name: 'Blue' }));
+	fireEvent.click(screen.getByRole('button', { name: 'Blue' }));
 	await waitFor(() => expect(ui.container.querySelectorAll('.highlight-mark.blue')).toHaveLength(1));
 	fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
-	const stored = (await highlights.list(docId))[0];
+	const current = (await highlights.list(docId))[0];
 	expect(onAssistantAction).toHaveBeenCalledExactlyOnceWith(
 		{
-			text: stored.anchor.quote,
-			page: stored.page,
-			rects: stored.rects,
-			anchor: stored.anchor,
-			rotation: stored.rotation,
+			text: current.anchor.quote,
+			page: current.page,
+			rects: current.rects,
+			anchor: current.anchor,
+			rotation: current.rotation,
 		},
 		'ask',
 	);
-	fireEvent.click(screen.getByText('Remove highlight'));
-	fireEvent.click(screen.getByText('Confirm removal'));
+	// Removal needs no confirmation: it can be undone, notes included.
+	fireEvent.click(screen.getByRole('button', { name: 'Remove highlight' }));
 	await waitFor(() => expect(ui.container.querySelectorAll('.highlight-mark')).toHaveLength(0));
+	await screen.findByText('Highlight and 1 note removed');
 	expect(await database.annotations.count()).toBe(0);
+	fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+	await screen.findByText('Highlight restored');
+	await waitFor(() => expect(ui.container.querySelectorAll('.highlight-mark.blue')).toHaveLength(1));
+	expect((await database.annotations.toArray()).map(note => note.text)).toEqual(['Revised local note']);
 	expect(fetchSpy).not.toHaveBeenCalled();
 	ui.unmount();
 	await database.delete();
@@ -363,7 +377,6 @@ test('notes navigate to the exact highlight fraction on a virtualized, previousl
 	await waitFor(() => expect(screen.queryByLabelText('Edit note for page 115')).toBeNull());
 	expect(viewport.scrollTop).toBe(scrollTop);
 	fireEvent.click(screen.getByRole('button', { name: 'Delete note' }));
-	fireEvent.click(screen.getByRole('button', { name: 'Confirm note deletion' }));
 	await waitFor(() => expect(screen.queryByText('Revised deep-page note')).toBeNull());
 	expect(viewport.scrollTop).toBe(scrollTop);
 	expect(viewport.dataset.currentPage).toBe('115');

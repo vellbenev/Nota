@@ -1,5 +1,7 @@
-import { Dexie } from 'dexie';
+// fake-indexeddb must install globals before Dexie is evaluated: Dexie captures
+// indexedDB/IDBKeyRange at import time.
 import 'fake-indexeddb/auto';
+import { Dexie } from 'dexie';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { NotaDatabase } from '../src/infrastructure/db/database.ts';
@@ -79,4 +81,3 @@ test('note edits survive reopen, note-only deletion preserves the highlight and 
 		await db.delete();
 	}
 });
-

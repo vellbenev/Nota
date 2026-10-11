@@ -101,15 +101,18 @@ export default function ReaderToolbar({
 					Snip
 				</Button>
 			</Tooltip>
-			<Button
-				size='sm'
-				aria-label='Highlights and notes'
-				aria-expanded={notesOpen}
-				aria-controls='highlight-notes-panel'
-				onClick={onNotesToggle}
-			>
-				Notes{highlightCount ? ` (${highlightCount})` : ''}
-			</Button>
+			<Tooltip content={`${notesOpen ? 'Hide' : 'Show'} highlights & notes · Alt + N`}>
+				<Button
+					size='sm'
+					className={notesOpen ? styles.toggleOn : undefined}
+					aria-label='Highlights and notes'
+					aria-expanded={notesOpen}
+					aria-controls='highlight-notes-panel'
+					onClick={onNotesToggle}
+				>
+					Notes{highlightCount ? ` (${highlightCount})` : ''}
+				</Button>
+			</Tooltip>
 		</div>
 	);
 }

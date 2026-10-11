@@ -1,21 +1,167 @@
-import { useState } from 'react';
-import { Button, Dropdown, Textarea } from '../../components/ui';
-import type { Annotation, Highlight, HighlightColor } from '../../domain/highlight';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { Button, Textarea } from '../../components/ui';
+import { HIGHLIGHT_COLORS, type Annotation, type Highlight, type HighlightColor } from '../../domain/highlight';
 import styles from './NotesPanel.module.css';
+import { hasStoredDraft, useStoredDraft } from './useStoredDraft';
 export interface HighlightActions {
-	onColor: (id: string, color: HighlightColor) => Promise<void>;
-	onRemove: (id: string) => Promise<void>;
-	onAddNote: (id: string, text: string) => Promise<void>;
-	onUpdateNote: (id: string, text: string) => Promise<void>;
-	onRemoveNote: (id: string) => Promise<void>;
+	onColor: (id: string, color: HighlightColor) => Promise<unknown>;
+	onRemove: (id: string) => Promise<unknown>;
+	onAddNote: (id: string, text: string) => Promise<unknown>;
+	onUpdateNote: (id: string, text: string) => Promise<unknown>;
+	onRemoveNote: (id: string) => Promise<unknown>;
 	onAsk: (item: Highlight) => void;
 	onExplain: (item: Highlight) => void;
 }
+const title = (color: string) => color[0].toUpperCase() + color.slice(1);
+const message = (failure: unknown) => (failure instanceof Error ? failure.message : String(failure));
+const submitShortcut = (event: KeyboardEvent<HTMLTextAreaElement>) =>
+	event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing;
+
+/** Run one write at a time and surface its failure next to the control that caused it. */
+function useAction() {
+	const [busy, setBusy] = useState(false),
+		[error, setError] = useState('');
+	const mounted = useRef(true);
+	useEffect(() => {
+		mounted.current = true; // StrictMode re-runs effects after a simulated unmount.
+		return () => {
+			mounted.current = false;
+		};
+	}, []);
+	async function run(action: () => Promise<unknown>) {
+		if (busy) return false;
+		setBusy(true);
+		setError('');
+		try {
+			await action();
+			return true;
+		} catch (failure) {
+			if (mounted.current) setError(message(failure));
+			return false;
+		} finally {
+			if (mounted.current) setBusy(false);
+		}
+	}
+	/** For writes the history queue already orders: report failures, never block the UI. */
+	function fire(action: () => Promise<unknown>) {
+		setError('');
+		action().catch(failure => {
+			if (mounted.current) setError(message(failure));
+		});
+	}
+	return { busy, error, run, fire };
+}
+
+function NoteItem({
+	note,
+	page,
+	onUpdate,
+	onRemove,
+}: {
+	note: Annotation;
+	page: number;
+	onUpdate: HighlightActions['onUpdateNote'];
+	onRemove: HighlightActions['onRemoveNote'];
+}) {
+	const key = `edit:${note.id}`;
+	const [editing, setEditing] = useState(() => hasStoredDraft(key));
+	const [text, setText, discard] = useStoredDraft(key, note.text);
+	const { busy, error, run, fire } = useAction();
+	const field = useRef<HTMLTextAreaElement>(null);
+	useEffect(() => {
+		if (editing) field.current?.focus({ preventScroll: true });
+	}, [editing]);
+	async function save() {
+		if (text.trim() === note.text) {
+			discard();
+			setEditing(false);
+			return;
+		}
+		if (await run(() => onUpdate(note.id, text))) {
+			discard();
+			setEditing(false);
+		}
+	}
+	if (editing)
+		return (
+			<form
+				className={styles.note}
+				onSubmit={event => {
+					event.preventDefault();
+					void save();
+				}}
+			>
+				<Textarea
+					ref={field}
+					aria-label={`Edit note for page ${page}`}
+					dir='auto'
+					value={text}
+					maxLength={10000}
+					onChange={event => setText(event.target.value)}
+					onKeyDown={event => {
+						if (submitShortcut(event)) {
+							event.preventDefault();
+							void save();
+						} else if (event.key === 'Escape') {
+							event.preventDefault();
+							event.stopPropagation();
+							discard();
+							setEditing(false);
+						}
+					}}
+					readOnly={busy}
+					required
+				/>
+				<div className={styles.formActions}>
+					<Button size='sm' type='submit' variant='primary' disabled={busy || !text.trim()}>
+						Save note
+					</Button>
+					<Button
+						size='sm'
+						variant='ghost'
+						disabled={busy}
+						onClick={() => {
+							discard();
+							setEditing(false);
+						}}
+					>
+						Cancel edit
+					</Button>
+					<span className={styles.hint}>⌘/Ctrl ↵ saves · Esc cancels</span>
+				</div>
+				{error && (
+					<p className={styles.error} role='alert'>
+						{error}
+					</p>
+				)}
+			</form>
+		);
+	return (
+		<div className={styles.note}>
+			<p dir='auto' onDoubleClick={() => setEditing(true)}>
+				{note.text}
+			</p>
+			<div className={styles.noteActions}>
+				<Button size='sm' variant='ghost' disabled={busy} onClick={() => setEditing(true)}>
+					Edit note
+				</Button>
+				<Button size='sm' variant='ghost' disabled={busy} onClick={() => fire(() => onRemove(note.id))}>
+					Delete note
+				</Button>
+			</div>
+			{error && (
+				<p className={styles.error} role='alert'>
+					{error}
+				</p>
+			)}
+		</div>
+	);
+}
+
 export default function HighlightEditor({
 	item,
 	notes,
-	draft,
-	onDraft,
+	focusComposer,
 	onColor,
 	onRemove,
 	onAddNote,
@@ -26,170 +172,101 @@ export default function HighlightEditor({
 }: HighlightActions & {
 	item: Highlight;
 	notes: Annotation[];
-	draft: string;
-	onDraft: (text: string) => void;
+	/** Changes when the composer should take focus (e.g. after "Note" in the selection menu). */
+	focusComposer?: number;
 }) {
-	const [busy, setBusy] = useState(false),
-		[error, setError] = useState('');
-	const [editing, setEditing] = useState<string | null>(null),
-		[editText, setEditText] = useState('');
-	const [deleting, setDeleting] = useState<string | null>(null);
-	async function run(action: () => Promise<void>) {
-		if (busy) return;
-		setBusy(true);
-		setError('');
-		try {
-			await action();
-		} catch (failure) {
-			setError(failure instanceof Error ? failure.message : String(failure));
-		} finally {
-			setBusy(false);
+	const [draft, setDraft, clearDraft] = useStoredDraft(`note:${item.id}`);
+	const { busy, error, run, fire } = useAction();
+	const composer = useRef<HTMLTextAreaElement>(null);
+	useEffect(() => {
+		if (focusComposer) composer.current?.focus({ preventScroll: false });
+	}, [focusComposer]);
+	async function add() {
+		if (!draft.trim()) return;
+		if (await run(() => onAddNote(item.id, draft))) {
+			clearDraft();
+			composer.current?.focus({ preventScroll: true });
 		}
 	}
 	return (
 		<div className={styles.editor}>
-			<div className={styles.actions}>
-				<Dropdown
-					label={`Highlight color for page ${item.page}`}
-					value={item.color}
-					disabled={busy}
-					onChange={color => void run(() => onColor(item.id, color as HighlightColor))}
-					options={(['yellow', 'green', 'blue'] as const).map(color => ({
-						value: color,
-						label: color[0].toUpperCase() + color.slice(1),
-						icon: '●',
-					}))}
-				/>
-				<Button size='sm' variant='ghost' disabled={busy} onClick={() => onExplain(item)}>
-					Explain
-				</Button>
-				<Button size='sm' variant='ghost' disabled={busy} onClick={() => onAsk(item)}>
-					Ask
-				</Button>
-				<Button size='sm' variant='ghost' disabled={busy} onClick={() => setDeleting('highlight')}>
-					Remove highlight
-				</Button>
-			</div>
-			{deleting === 'highlight' && (
-				<div className={styles.confirm} role='group' aria-label='Confirm highlight removal'>
-					<p>
-						Remove this highlight and its {notes.length} note{notes.length === 1 ? '' : 's'}?
-					</p>
-					<Button
-						size='sm'
-						variant='danger'
-						disabled={busy}
-						onClick={() => void run(() => onRemove(item.id))}
-					>
-						Confirm removal
-					</Button>
-					<Button size='sm' variant='ghost' disabled={busy} onClick={() => setDeleting(null)}>
-						Cancel removal
-					</Button>
-				</div>
-			)}
 			{notes.map(note => (
-				<div key={note.id} className={styles.note}>
-					{editing === note.id ? (
-						<form
-							onSubmit={event => {
-								event.preventDefault();
-								void run(async () => {
-									await onUpdateNote(note.id, editText);
-									setEditing(null);
-								});
-							}}
-						>
-							<Textarea
-								aria-label={`Edit note for page ${item.page}`}
-								dir='auto'
-								value={editText}
-								maxLength={10000}
-								onChange={event => setEditText(event.target.value)}
-								disabled={busy}
-								required
-							/>
-							<div className={styles.formActions}>
-								<Button size='sm' type='submit' disabled={busy || !editText.trim()}>
-									Save note
-								</Button>
-								<Button size='sm' variant='ghost' disabled={busy} onClick={() => setEditing(null)}>
-									Cancel edit
-								</Button>
-							</div>
-						</form>
-					) : (
-						<>
-							<p dir='auto'>{note.text}</p>
-							<div className={styles.noteActions}>
-								<Button
-									size='sm'
-									variant='ghost'
-									disabled={busy}
-									onClick={() => {
-										setEditing(note.id);
-										setEditText(note.text);
-									}}
-								>
-									Edit note
-								</Button>
-								<Button size='sm' variant='ghost' disabled={busy} onClick={() => setDeleting(note.id)}>
-									Delete note
-								</Button>
-							</div>
-						</>
-					)}
-					{deleting === note.id && (
-						<div className={styles.confirm} role='group' aria-label='Confirm note deletion'>
-							<p>Delete this note? The highlight will remain.</p>
-							<Button
-								size='sm'
-								variant='danger'
-								disabled={busy}
-								onClick={() =>
-									void run(async () => {
-										await onRemoveNote(note.id);
-										setDeleting(null);
-									})
-								}
-							>
-								Confirm note deletion
-							</Button>
-							<Button size='sm' variant='ghost' disabled={busy} onClick={() => setDeleting(null)}>
-								Cancel deletion
-							</Button>
-						</div>
-					)}
-				</div>
+				<NoteItem key={note.id} note={note} page={item.page} onUpdate={onUpdateNote} onRemove={onRemoveNote} />
 			))}
 			<form
+				className={styles.composer}
 				onSubmit={event => {
 					event.preventDefault();
-					void run(async () => {
-						await onAddNote(item.id, draft);
-						onDraft('');
-					});
+					void add();
 				}}
 			>
-				<label className={styles.label} htmlFor={`note-${item.id}`}>
-					Add a local note
-				</label>
 				<Textarea
+					ref={composer}
 					id={`note-${item.id}`}
 					aria-label={`Note for page ${item.page}`}
 					value={draft}
-					onChange={event => onDraft(event.target.value)}
+					onChange={event => setDraft(event.target.value)}
+					onKeyDown={event => {
+						if (submitShortcut(event)) {
+							event.preventDefault();
+							void add();
+						}
+					}}
 					dir='auto'
-					placeholder='Your thoughts on this passage…'
+					placeholder={notes.length ? 'Add another note…' : 'Write a note…'}
 					maxLength={10000}
-					disabled={busy}
-					required
+					readOnly={busy}
+					rows={draft ? 3 : 2}
 				/>
-				<Button size='sm' type='submit' disabled={busy || !draft.trim()}>
-					Add note
-				</Button>
+				{draft.trim() && (
+					<div className={styles.formActions}>
+						<Button size='sm' type='submit' variant='primary' disabled={busy}>
+							Add note
+						</Button>
+						<span className={styles.hint}>⌘/Ctrl ↵</span>
+					</div>
+				)}
 			</form>
-			{busy && <p role='status'>Saving changes…</p>}
+			<div className={styles.actions}>
+				<div className={styles.swatches} role='group' aria-label={`Highlight color for page ${item.page}`}>
+					{HIGHLIGHT_COLORS.map(color => (
+						<button
+							key={color}
+							type='button'
+							className={`${styles.swatch} ${styles[color]}`}
+							aria-label={title(color)}
+							aria-pressed={item.color === color}
+							title={`${title(color)} highlight`}
+							onClick={() => {
+								if (item.color !== color) fire(() => onColor(item.id, color));
+							}}
+						/>
+					))}
+				</div>
+				<Button size='sm' variant='ghost' onClick={() => onExplain(item)}>
+					Explain
+				</Button>
+				<Button size='sm' variant='ghost' onClick={() => onAsk(item)}>
+					Ask
+				</Button>
+				<Button
+					size='sm'
+					variant='ghost'
+					className={styles.remove}
+					aria-label='Remove highlight'
+					title={
+						notes.length ? 'Remove this highlight and its notes (you can undo)' : 'Remove this highlight'
+					}
+					onClick={() => fire(() => onRemove(item.id))}
+				>
+					Remove
+				</Button>
+			</div>
+			{busy && (
+				<p className={styles.hint} role='status'>
+					Saving…
+				</p>
+			)}
 			{error && (
 				<p className={styles.error} role='alert'>
 					{error}

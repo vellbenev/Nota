@@ -17,6 +17,7 @@
     "@fontsource-variable/vazirmatn": "^5.3.0",
     "@rive-app/react-canvas": "^4.35.0",
     "@tanstack/react-virtual": "^3.14.13",
+    "core-js": "^3.50.0",
     "dexie": "^4.4.6",
     "katex": "^0.18.9",
     "react": "^19.3.0",

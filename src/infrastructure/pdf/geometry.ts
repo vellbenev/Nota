@@ -24,7 +24,7 @@ const corners = ([x, y, w, h]: NormalizedRect) => [
 	[x, y + h],
 	[x + w, y + h],
 ];
-/** Merge only overlapping/touching fragments on the same visual line, before PDF rotation. */
+/** Merge overlapping or word-space-adjacent fragments on the same visual line, before PDF rotation. */
 function cleanClientRects(rects: Iterable<ClientBox>, client: ClientBox): ClientBox[] {
 	const lines: ClientBox[] = [];
 	for (const rect of rects) {
@@ -37,13 +37,17 @@ function cleanClientRects(rects: Iterable<ClientBox>, client: ClientBox): Client
 		let merged: ClientBox = { left, top, width: right - left, height: bottom - top };
 		for (let index = 0; index < lines.length; ) {
 			const other = lines[index];
-			const tolerance = Math.min(1, Math.min(merged.height, other.height) * 0.08);
-			const sameLine =
-				Math.abs(merged.top - other.top) <= tolerance &&
-				Math.abs(merged.top + merged.height - other.top - other.height) <= tolerance;
+			// Fragments share a line when their boxes mostly overlap vertically (bold,
+			// italic and other runs differ slightly). Gaps up to a word space are
+			// bridged so a highlighted line reads as one mark; wider gaps (columns,
+			// unselected bidi runs) stay separate.
+			const lineHeight = Math.min(merged.height, other.height);
+			const overlap =
+				Math.min(merged.top + merged.height, other.top + other.height) - Math.max(merged.top, other.top);
+			const sameLine = overlap >= lineHeight * 0.7;
+			const gap = Math.max(Math.min(1, lineHeight * 0.08), lineHeight * 0.4);
 			const touching =
-				merged.left <= other.left + other.width + tolerance &&
-				other.left <= merged.left + merged.width + tolerance;
+				merged.left <= other.left + other.width + gap && other.left <= merged.left + merged.width + gap;
 			if (!sameLine || !touching) {
 				index++;
 				continue;

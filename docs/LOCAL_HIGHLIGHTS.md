@@ -1,5 +1,68 @@
 # Days 4–5 — Selections, normalized highlights and local notes
 
+> **Current behavior.** The section below, _Text-anchored highlights, merging and history_, describes how highlighting
+> works today. Later sections are the original milestone notes; where they mention a separate **Highlight** button,
+> **Undo highlight**, a color drop-down or removal confirmations, the newer behavior replaces them.
+
+## Text-anchored highlights, merging and history
+
+**Why highlighting was unreliable.** Two root causes, both fixed:
+
+1. _Selection jumps._ PDF.js text layers are sparse, absolutely positioned spans. When a drag ended over blank space
+   (past a line end, between paragraphs, in a margin or column gutter), browsers resolved the selection focus to an
+   arbitrary DOM position, typically the end of the page or the next page. Users saw a huge selection, no highlight
+   menu, or the "one PDF page at a time" error. PDF.js's own viewer prevents this by moving the layer's `.endOfContent`
+   element beside the selection's moving edge; React-PDF does not. `features/reader/textLayerSelection.ts` ports that
+   behavior for every mounted page (it stays inactive in Firefox and Chromium 148+, which handle it natively, exactly as
+   PDF.js decides).
+2. _Geometry-only records._ A highlight was only a set of rectangles, so highlighting already highlighted text stacked a
+   second record on top (muddy blended colors, duplicate cards, ambiguous clicks), and nothing could tell which text a
+   highlight covered.
+
+**Data model.** New highlights also store `range`: character offsets into the page's _readable text_ (the text layer
+flattened to a string, one `\n` per PDF.js line break; see `features/reader/pageText.ts`). Offsets are independent of
+zoom, rotation and window size. Geometry is still stored and rendered as before. No schema migration is needed: `range`
+is optional, and older highlights are resolved on demand from their quote plus prefix/suffix context. Backups round-trip
+`range`. Selections are trimmed of leading/trailing whitespace, so a highlight never paints a sliver on a neighboring
+line.
+
+**Highlighting rules** (`features/highlights/planning.ts`):
+
+- No overlap with a saved highlight: create one.
+- Inside a single highlight: change its color (or nothing, if it already has that color). The selection menu shows the
+  current color with a check mark and offers **Remove**.
+- Overlapping one or more highlights: extend the oldest over the union and fold the others into it, in one transaction.
+  Notes of folded highlights move to the survivor; nothing is lost. Touching highlights (one ends where the next begins)
+  stay separate.
+
+**History** (`features/highlights/useHighlightHistory.ts`). Creating, combining, recoloring and removing highlights and
+deleting notes go through one per-document history. Writes run strictly in order, so Undo waits for a write still in
+progress and a refresh never resurrects an undone change. Each change records repository snapshots _before_ and _after_;
+undo and redo replay them through `highlights.apply`, which writes nothing and reports a conflict if the records changed
+meanwhile (for example, a note was added to a highlight whose creation you are undoing, or the highlight of a deleted
+note is gone). Removal therefore needs no confirmation dialog: the notification offers **Undo**, and `⌘Z`/`Ctrl+Z` works
+anywhere outside text fields. Successful notifications fade after five seconds (not while hovered or focused); errors
+stay until dismissed.
+
+**Selection menu.** One click on a color highlights. `H` highlights with the last color used (remembered locally); `N`
+or **Note** highlights and opens the note composer focused. Session-only PDFs show the controls disabled, with the
+reason in the tooltip.
+
+**Notes.** Notes are edited inline. `⌘↵`/`Ctrl+Enter` saves; `Escape` cancels an edit without closing the panel. Text
+being typed into the composer or an edit survives switching highlights, closing the panel, changing papers and reloading
+(it is kept in `localStorage` until saved or discarded). Note writes wait for pending highlight writes, so writing a
+note on a just-created highlight cannot fail because the highlight is not stored yet.
+
+**PDF engine compatibility.** PDF.js 6.3's modern build calls very recent built-ins
+(`Map.prototype.getOrInsertComputed`, `Math.sumPrecise`, `Uint8Array` base64 helpers, iterator helpers). Browsers
+without them could not open any PDF. The app now loads exactly the core-js modules PDF.js's legacy build would add
+(`infrastructure/pdf/pdfjs-engine.mjs`, a separate chunk) before the modern engine, and uses the legacy worker build,
+keeping every chunk within the 500 kB budget.
+
+Automated coverage: `tests/highlight-anchoring.test.tsx` (text offsets, legacy anchor resolution, planning rules,
+selection stabilizer), `tests/highlight-history.test.tsx` (optimistic writes, undo during a pending write, failures,
+conflicts, merge/undo round trip) and the updated viewport, selection and notes-panel suites.
+
 ## Implementation
 
 - `src/infrastructure/pdf/geometry.ts` clips DOM range rectangles to the text layer, accounts for its displayed size,

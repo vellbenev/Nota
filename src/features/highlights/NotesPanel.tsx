@@ -3,6 +3,9 @@ import { Button, Dropdown, Input } from '../../components/ui';
 import type { Annotation, Highlight } from '../../domain/highlight';
 import HighlightEditor, { type HighlightActions } from './HighlightEditor';
 import styles from './NotesPanel.module.css';
+/** PDF line breaks are layout, not meaning: show the passage as running text. */
+const readableQuote = (quote: string) => quote.replace(/\s*\n\s*/g, ' ');
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 export default function NotesPanel({
 	open,
 	items,
@@ -12,6 +15,7 @@ export default function NotesPanel({
 	onSelect,
 	onJump,
 	onExport,
+	composeRequest,
 	...actions
 }: HighlightActions & {
 	open: boolean;
@@ -22,10 +26,11 @@ export default function NotesPanel({
 	onSelect: (id: string) => void;
 	onJump: (item: Highlight) => void;
 	onExport?: () => void;
+	/** Focus the note composer of this highlight; `nonce` repeats the request. */
+	composeRequest?: { id: string; nonce: number } | null;
 }) {
 	const [query, setQuery] = useState(''),
 		[sort, setSort] = useState('page');
-	const [drafts, setDrafts] = useState<Record<string, string>>({});
 	const list = useRef<HTMLDivElement>(null);
 	const [focusTarget, setFocusTarget] = useState<string | null>(null);
 	const indexed = useMemo(() => {
@@ -69,9 +74,9 @@ export default function NotesPanel({
 			if (target.top < bounds.top) container.scrollTop += target.top - bounds.top;
 			else if (target.bottom > bounds.bottom) container.scrollTop += target.bottom - bounds.bottom;
 		}
-		card?.focus({ preventScroll: true });
+		if (composeRequest?.id !== focusTarget) card?.focus({ preventScroll: true });
 		if (card) setFocusTarget(null);
-	}, [open, focusTarget, filtered]);
+	}, [open, focusTarget, filtered, composeRequest]);
 	return (
 		<aside
 			id='highlight-notes-panel'
@@ -89,7 +94,7 @@ export default function NotesPanel({
 				<div>
 					<h2>Highlights & notes</h2>
 					<p>
-						{items.length} highlights · {notes.length} notes
+						{plural(items.length, 'highlight')} · {plural(notes.length, 'note')}
 					</p>
 				</div>
 				<div className={styles.headerActions}>
@@ -137,7 +142,13 @@ export default function NotesPanel({
 			</div>
 			<div ref={list} className={styles.list}>
 				{!items.length ? (
-					<p className={styles.empty}>Highlight a passage to start your reading notes.</p>
+					<div className={styles.empty}>
+						<p>No highlights yet.</p>
+						<p>
+							Select text in the paper, then pick a color — or press <kbd>H</kbd>. Choose <b>Note</b> to
+							write a thought right away.
+						</p>
+					</div>
 				) : !filtered.length ? (
 					<p className={styles.empty} role='status'>
 						No matching highlights or notes.
@@ -163,7 +174,11 @@ export default function NotesPanel({
 								>
 									Page {item.page} ↗
 								</Button>
-								<span>{(indexed.get(item.id) ?? []).length} notes</span>
+								<span>
+									{(indexed.get(item.id) ?? []).length
+										? plural((indexed.get(item.id) ?? []).length, 'note')
+										: ''}
+								</span>
 							</div>
 							<button
 								type='button'
@@ -173,15 +188,14 @@ export default function NotesPanel({
 								aria-label={`Open highlight on page ${item.page}: ${item.anchor.quote.slice(0, 80)}`}
 								onClick={() => onSelect(item.id)}
 							>
-								{item.anchor.quote}
+								{readableQuote(item.anchor.quote)}
 							</button>
 							{activeId === item.id ? (
 								<HighlightEditor
 									key={item.id}
 									item={item}
 									notes={indexed.get(item.id) ?? []}
-									draft={drafts[item.id] ?? ''}
-									onDraft={text => setDrafts(previous => ({ ...previous, [item.id]: text }))}
+									focusComposer={composeRequest?.id === item.id ? composeRequest.nonce : undefined}
 									{...actions}
 								/>
 							) : (

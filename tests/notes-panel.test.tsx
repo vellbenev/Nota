@@ -59,6 +59,7 @@ function setup() {
 afterEach(() => {
 	cleanup();
 	vi.restoreAllMocks();
+	localStorage.clear();
 });
 
 test('searches both quotes and notes, orders by page or newest, and does not invoke AI on opening', () => {
@@ -81,7 +82,7 @@ test('searches both quotes and notes, orders by page or newest, and does not inv
 	expect(ui.onJump).toHaveBeenCalledExactlyOnceWith(item);
 });
 
-test('edits a note, confirms note-only deletion, and preserves the draft on failed save', async () => {
+test('edits a note inline, deletes it without a confirmation (undo lives in the toast), and keeps a failed draft', async () => {
 	const ui = setup();
 	fireEvent.click(screen.getByRole('button', { name: /Open highlight on page 2/ }));
 	fireEvent.click(screen.getByRole('button', { name: 'Edit note' }));
@@ -90,14 +91,9 @@ test('edits a note, confirms note-only deletion, and preserves the draft on fail
 	await waitFor(() => expect(ui.onUpdateNote).toHaveBeenCalledExactlyOnceWith('note-a', 'Revised note'));
 	await waitFor(() => expect(screen.queryByLabelText('Edit note for page 2')).toBeNull());
 	fireEvent.click(screen.getByRole('button', { name: 'Delete note' }));
-	expect(ui.onRemoveNote).not.toHaveBeenCalled();
-	fireEvent.click(screen.getByRole('button', { name: 'Cancel deletion' }));
-	expect(ui.onRemoveNote).not.toHaveBeenCalled();
-	fireEvent.click(screen.getByRole('button', { name: 'Delete note' }));
-	fireEvent.click(screen.getByRole('button', { name: 'Confirm note deletion' }));
 	await waitFor(() => expect(ui.onRemoveNote).toHaveBeenCalledExactlyOnceWith('note-a'));
 	expect(ui.onRemove).not.toHaveBeenCalled();
-	await waitFor(() => expect(screen.queryByText('Saving changes…')).toBeNull());
+	await waitFor(() => expect(screen.queryByText('Saving…')).toBeNull());
 	ui.onAddNote.mockRejectedValueOnce(new Error('Storage unavailable'));
 	fireEvent.change(screen.getByLabelText('Note for page 2'), { target: { value: 'Keep this draft' } });
 	fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
@@ -105,13 +101,80 @@ test('edits a note, confirms note-only deletion, and preserves the draft on fail
 	expect((screen.getByLabelText('Note for page 2') as HTMLTextAreaElement).value).toBe('Keep this draft');
 });
 
-test('removing a highlight requires an explicit confirmation', async () => {
+test('Cmd/Ctrl+Enter saves; Escape cancels an edit without closing the panel', async () => {
 	const ui = setup();
 	fireEvent.click(screen.getByRole('button', { name: /Open highlight on page 2/ }));
+	const composer = screen.getByLabelText('Note for page 2');
+	composer.focus();
+	fireEvent.change(composer, { target: { value: 'Quick thought' } });
+	fireEvent.keyDown(composer, { key: 'Enter', ctrlKey: true });
+	await waitFor(() => expect(ui.onAddNote).toHaveBeenCalledExactlyOnceWith('a', 'Quick thought'));
+	await waitFor(() => expect((screen.getByLabelText('Note for page 2') as HTMLTextAreaElement).value).toBe(''));
+	// Saving never drops focus, so the next thought can be typed straight away.
+	expect(document.activeElement).toBe(screen.getByLabelText('Note for page 2'));
+	expect(screen.getByLabelText('Note for page 2').hasAttribute('disabled')).toBe(false);
+	fireEvent.click(screen.getByRole('button', { name: 'Edit note' }));
+	const editor = screen.getByLabelText('Edit note for page 2');
+	fireEvent.change(editor, { target: { value: 'Abandoned edit' } });
+	fireEvent.keyDown(editor, { key: 'Escape' });
+	expect(screen.queryByLabelText('Edit note for page 2')).toBeNull();
+	expect(ui.onClose).not.toHaveBeenCalled();
+	expect(ui.onUpdateNote).not.toHaveBeenCalled();
+	expect(screen.getByText('A local thought فارسی')).toBeTruthy();
+});
+
+test('note drafts survive switching highlights and remounting the panel', () => {
+	const first = setup();
+	fireEvent.click(screen.getByRole('button', { name: /Open highlight on page 2/ }));
+	fireEvent.change(screen.getByLabelText('Note for page 2'), { target: { value: 'Unsent idea' } });
+	fireEvent.click(screen.getByRole('button', { name: 'Edit note' }));
+	fireEvent.change(screen.getByLabelText('Edit note for page 2'), { target: { value: 'Half-edited' } });
+	fireEvent.click(screen.getByRole('button', { name: /Open highlight on page 5/ }));
+	expect(screen.queryByLabelText('Note for page 2')).toBeNull();
+	first.unmount();
+	setup();
+	fireEvent.click(screen.getByRole('button', { name: /Open highlight on page 2/ }));
+	expect((screen.getByLabelText('Note for page 2') as HTMLTextAreaElement).value).toBe('Unsent idea');
+	expect((screen.getByLabelText('Edit note for page 2') as HTMLTextAreaElement).value).toBe('Half-edited');
+	fireEvent.click(screen.getByRole('button', { name: 'Cancel edit' }));
+	expect(screen.getByText('A local thought فارسی')).toBeTruthy();
+});
+
+test('removing a highlight and changing its color are single actions', async () => {
+	const ui = setup();
+	fireEvent.click(screen.getByRole('button', { name: /Open highlight on page 2/ }));
+	expect(screen.getByRole('button', { name: 'Yellow' }).getAttribute('aria-pressed')).toBe('true');
+	fireEvent.click(screen.getByRole('button', { name: 'Blue' }));
+	await waitFor(() => expect(ui.onColor).toHaveBeenCalledExactlyOnceWith('a', 'blue'));
 	fireEvent.click(screen.getByRole('button', { name: 'Remove highlight' }));
-	expect(ui.onRemove).not.toHaveBeenCalled();
-	fireEvent.click(screen.getByRole('button', { name: 'Confirm removal' }));
 	await waitFor(() => expect(ui.onRemove).toHaveBeenCalledExactlyOnceWith('a'));
+});
+
+test('counts are pluralized and the empty state explains how to start', () => {
+	render(
+		<NotesPanel
+			open
+			items={[]}
+			notes={[]}
+			activeId={null}
+			onSelect={vi.fn()}
+			onJump={vi.fn()}
+			onClose={vi.fn()}
+			onColor={vi.fn()}
+			onRemove={vi.fn()}
+			onAddNote={vi.fn()}
+			onUpdateNote={vi.fn()}
+			onRemoveNote={vi.fn()}
+			onAsk={vi.fn()}
+			onExplain={vi.fn()}
+		/>,
+	);
+	expect(screen.getByText('0 highlights · 0 notes')).toBeTruthy();
+	expect(screen.getByText('No highlights yet.')).toBeTruthy();
+	cleanup();
+	setup();
+	expect(screen.getByText('2 highlights · 1 note')).toBeTruthy();
+	expect(screen.getByText('1 note')).toBeTruthy();
 });
 
 test('hit testing uses transformed page geometry, respects gaps, and prefers the latest overlapping highlight', () => {
