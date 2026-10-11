@@ -108,17 +108,12 @@ System follows your operating system. Menus and crop controls stay within the vi
 
 ### Install and run
 
-Replace `YOUR-OWNER` with the GitHub account or organization hosting this repository:
-
 ```sh
-git clone https://github.com/YOUR-OWNER/Nota.git
+git clone https://github.com/vellbenev/Nota.git
 cd Nota
 npm install
 npm run dev
 ```
-
-Open **http://127.0.0.1:5173/**. The development server uses a fixed port so it does not silently switch to a different
-browser library. For reproducible dependency installation, use `npm ci`.
 
 ### Configure Ollama
 
